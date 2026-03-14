@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dynaris Widget Demo</title>
+</head>
+<body>
+  <h1>Dynaris Widget Demo</h1>
+  <p>Open the chat button in the bottom-right corner. Replace <code>data-user-id</code> with a real Dynaris user ID to test against the gateway.</p>
+
+  <script type="module" src="/src/index.js"></script>
+  <script type="module">
+    import { init } from '/src/index.js';
+    init({
+      userId: 'demo-user-id',
+      apiUrl: 'http://localhost:3001',
+      title: 'Text Support',
+      subtitle: 'AI assistant',
+      welcomeMessage: 'Good morning and welcome. Please provide your **name** and **email** so I can assist you better. Also, describe your use case in as much detail as you can so I can help you effectively.',
+      usePolling: true,
+    });
+  </script>
+</body>
+</html>
