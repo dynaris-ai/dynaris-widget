@@ -18,8 +18,8 @@ export function createWidget(config) {
   const {
     apiUrl = 'https://api.dynaris.ai',
     userId,
-    title = 'Text Support',
-    subtitle = 'AI assistant',
+    title = 'Chat with us',
+    subtitle = 'Speak directly with our AI',
     position = 'bottom-right',
     welcomeMessage = null,
     privacyPolicyUrl = null,

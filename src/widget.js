@@ -28,8 +28,8 @@ export function init(config = {}) {
   const ui = createWidget({
     apiUrl,
     userId,
-    title: config.title ?? 'Text Support',
-    subtitle: config.subtitle ?? 'AI assistant',
+    title: config.title ?? 'Chat with us',
+    subtitle: config.subtitle ?? 'Speak directly with our AI',
     position: config.position ?? 'bottom-right',
     stylesUrl: config.stylesUrl,
     welcomeMessage: config.welcomeMessage,
