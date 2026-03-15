@@ -9,7 +9,10 @@ export interface ChatWidgetMenuConfig {
 }
 
 export interface ChatWidgetConfig {
-  userId: string;
+  /** API key for gateway auth (from dynaris-web). When set, userId is resolved server-side. */
+  apiKey?: string;
+  /** Legacy: userId when apiKey not used (same-origin or proxy). */
+  userId?: string;
   apiUrl?: string;
   title?: string;
   subtitle?: string;

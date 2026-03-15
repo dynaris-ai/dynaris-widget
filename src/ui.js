@@ -8,6 +8,7 @@ const ICONS = {
   emoji: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>',
   send: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>',
   user: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>',
+  volume: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>',
 };
 
 const DYNARIS_MINI_LOGO =
@@ -102,12 +103,46 @@ export function createWidget(config) {
   agentPill.appendChild(agentInfo);
   centerSection.appendChild(agentPill);
 
+  const menuNav = document.createElement('div');
+  menuNav.className = 'dynaris-widget-header-nav dynaris-widget-header-nav-left';
+
+  const menuBtn = document.createElement('button');
+  menuBtn.type = 'button';
+  menuBtn.className = 'dynaris-widget-header-menu';
+  menuBtn.innerHTML = ICONS.menu;
+  menuBtn.setAttribute('aria-label', 'Menu');
+
+  const menuDropdown = document.createElement('div');
+  menuDropdown.className = 'dynaris-widget-menu-dropdown';
+
+  const soundItem = document.createElement('button');
+  soundItem.type = 'button';
+  soundItem.className = 'dynaris-widget-menu-item dynaris-widget-menu-item-toggle';
+  soundItem.setAttribute('data-sound-toggle', '1');
+
+  const soundLabelWrap = document.createElement('span');
+  soundLabelWrap.className = 'dynaris-widget-sound-label-wrap';
+  soundLabelWrap.innerHTML = `${ICONS.volume}<span class="dynaris-widget-sound-label-text">Sound</span>`;
+
+  const toggleTrack = document.createElement('span');
+  toggleTrack.className = 'dynaris-widget-toggle-track';
+  const toggleThumb = document.createElement('span');
+  toggleThumb.className = 'dynaris-widget-toggle-thumb';
+  toggleTrack.appendChild(toggleThumb);
+
+  soundItem.appendChild(soundLabelWrap);
+  soundItem.appendChild(toggleTrack);
+
+  menuDropdown.appendChild(soundItem);
+  menuNav.appendChild(menuBtn);
+
   const minimizeBtn = document.createElement('button');
   minimizeBtn.type = 'button';
   minimizeBtn.className = 'dynaris-widget-header-minimize';
   minimizeBtn.innerHTML = ICONS.minimize;
   minimizeBtn.setAttribute('aria-label', 'Minimize');
 
+  header.appendChild(menuNav);
   header.appendChild(centerSection);
   header.appendChild(minimizeBtn);
 
@@ -149,6 +184,15 @@ export function createWidget(config) {
   addBtn.innerHTML = ICONS.plus;
   addBtn.setAttribute('aria-label', 'Attach');
 
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.multiple = true;
+  fileInput.accept = 'image/*,.pdf,.doc,.docx,.txt,application/pdf';
+  fileInput.style.display = 'none';
+
+  const attachmentsPreview = document.createElement('div');
+  attachmentsPreview.className = 'dynaris-widget-attachments-preview';
+
   const input = document.createElement('input');
   input.className = 'dynaris-widget-input';
   input.type = 'text';
@@ -161,7 +205,9 @@ export function createWidget(config) {
   sendBtn.innerHTML = ICONS.send;
   sendBtn.setAttribute('aria-label', 'Send');
 
+  inputSection.appendChild(attachmentsPreview);
   inputWrap.appendChild(addBtn);
+  inputWrap.appendChild(fileInput);
   inputWrap.appendChild(input);
   inputWrap.appendChild(sendBtn);
   inputSection.appendChild(inputWrap);
@@ -198,6 +244,7 @@ export function createWidget(config) {
   inputWrapper.appendChild(inputSection);
 
   panel.appendChild(header);
+  panel.appendChild(menuDropdown);
   panel.appendChild(messagesEl);
   panel.appendChild(inputWrapper);
   panel.appendChild(footer);
@@ -224,13 +271,6 @@ export function createWidget(config) {
   Object.assign(btn.style, pos);
   Object.assign(panel.style, { ...pos, bottom: '84px' });
 
-  if (welcomeMessage) {
-    appendMessage(messagesEl, {
-      content: { body: welcomeMessage },
-      direction: 'inbound',
-    }, 'inbound', true);
-  }
-
   return {
     container,
     btn,
@@ -238,26 +278,75 @@ export function createWidget(config) {
     messagesEl,
     input,
     sendBtn,
+    addBtn,
+    fileInput,
+    attachmentsPreview,
+    menuBtn,
+    menuDropdown,
+    soundItem,
+    soundToggleTrack: toggleTrack,
     minimizeBtn,
+    welcomeMessage: welcomeMessage || null,
     config: { apiUrl, userId, title, subtitle, position, embedPageUrl },
   };
 }
 
-function parseMessageBody(msg) {
-  const body = msg.content?.body ?? msg.content?.raw ?? String(msg.content ?? '');
-  const div = document.createElement('div');
-  div.className = 'dynaris-widget-msg-body';
-  div.innerHTML = body
+function escapeHtml(s) {
+  return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    .replace(/>/g, '&gt;');
+}
+
+function parseMessageBody(msg) {
+  const content = msg.content || {};
+  const msgType = msg.messageType || msg.message_type || 'text';
+  const div = document.createElement('div');
+  div.className = 'dynaris-widget-msg-body';
+
+  if (msgType === 'image' && (content.url || content.mediaId)) {
+    const img = document.createElement('img');
+    img.src = content.url || '';
+    img.alt = content.caption || '';
+    img.className = 'dynaris-widget-msg-attachment dynaris-widget-msg-image';
+    div.appendChild(img);
+    if (content.caption) {
+      const cap = document.createElement('div');
+      cap.className = 'dynaris-widget-msg-caption';
+      cap.innerHTML = escapeHtml(content.caption).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      div.appendChild(cap);
+    }
+    return div;
+  }
+
+  if (msgType === 'document' && (content.url || content.filename)) {
+    const link = document.createElement('a');
+    link.href = content.url || '#';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.className = 'dynaris-widget-msg-attachment dynaris-widget-msg-document';
+    link.textContent = content.filename || 'Download';
+    div.appendChild(link);
+    if (content.caption) {
+      const cap = document.createElement('div');
+      cap.className = 'dynaris-widget-msg-caption';
+      cap.innerHTML = escapeHtml(content.caption).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      div.appendChild(cap);
+    }
+    return div;
+  }
+
+  const body = content.body ?? content.raw ?? String(msg.content ?? '');
+  div.innerHTML = escapeHtml(body).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   return div;
 }
 
-export function appendMessage(messagesEl, msg, direction, isAgent = false) {
+export function appendMessage(messagesEl, msg, direction, isAgent = false, animate = false) {
   const row = document.createElement('div');
   row.className = `dynaris-widget-msg-row dynaris-widget-msg-row-${direction}`;
+  if (animate) {
+    row.classList.add('dynaris-widget-msg-enter');
+  }
 
   const avatar = document.createElement('div');
   avatar.className = 'dynaris-widget-msg-avatar';
@@ -271,6 +360,102 @@ export function appendMessage(messagesEl, msg, direction, isAgent = false) {
   row.appendChild(bubble);
   messagesEl.appendChild(row);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+export function appendTypingIndicator(messagesEl) {
+  const row = document.createElement('div');
+  row.className = 'dynaris-widget-msg-row dynaris-widget-msg-row-inbound dynaris-widget-msg-enter';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'dynaris-widget-msg-avatar';
+  avatar.innerHTML = ICONS.sparkle;
+
+  const typing = document.createElement('div');
+  typing.className = 'dynaris-widget-typing-indicator';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+
+  row.appendChild(avatar);
+  row.appendChild(typing);
+  row.dataset.typing = '1';
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return row;
+}
+
+export function removeTypingIndicator(messagesEl) {
+  const row = messagesEl.querySelector('[data-typing="1"]');
+  if (row) row.remove();
+}
+
+export function appendWaitingHint(messagesEl) {
+  const row = document.createElement('div');
+  row.className = 'dynaris-widget-msg-row dynaris-widget-msg-row-inbound dynaris-widget-waiting-hint dynaris-widget-msg-enter';
+  row.dataset.waitingHint = '1';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'dynaris-widget-msg-avatar';
+  avatar.innerHTML = ICONS.sparkle;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'dynaris-widget-msg dynaris-widget-msg-inbound dynaris-widget-waiting-bubble';
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'dynaris-widget-msg-body dynaris-widget-waiting-text';
+  bodyEl.textContent = 'Waiting for your message...';
+  bubble.appendChild(bodyEl);
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  messagesEl.appendChild(row);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return row;
+}
+
+export function removeWaitingHint(messagesEl) {
+  const row = messagesEl.querySelector('[data-waiting-hint="1"]');
+  if (row) row.remove();
+}
+
+export function appendMessageWithTypewriter(messagesEl, msg, direction, isAgent, charMs = 6) {
+  return new Promise((resolve) => {
+    const body = msg.content?.body ?? msg.content?.raw ?? String(msg.content ?? '');
+    const escaped = body
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    const row = document.createElement('div');
+    row.className = `dynaris-widget-msg-row dynaris-widget-msg-row-${direction} dynaris-widget-msg-enter`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'dynaris-widget-msg-avatar';
+    avatar.innerHTML = direction === 'inbound' || isAgent ? ICONS.sparkle : ICONS.user;
+
+    const bubble = document.createElement('div');
+    bubble.className = `dynaris-widget-msg dynaris-widget-msg-${direction}`;
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'dynaris-widget-msg-body';
+    bubble.appendChild(bodyEl);
+
+    row.appendChild(avatar);
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+
+    let i = 0;
+
+    function tick() {
+      if (i < escaped.length) {
+        const partial = escaped.slice(0, i + 1);
+        bodyEl.innerHTML = partial.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        i += 1;
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        setTimeout(tick, charMs);
+      } else {
+        bodyEl.innerHTML = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        resolve();
+      }
+    }
+    tick();
+  });
 }
 
 function formatTime(iso) {
