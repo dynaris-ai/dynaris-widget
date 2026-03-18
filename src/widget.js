@@ -284,7 +284,7 @@ export function init(config = {}) {
         filename: a.filename,
       })));
     } catch (e) {
-      console.error('[DynarisWidget] Send failed:', e);
+      console.error('[DynarisWidget] Send failed:', e?.message ?? e, 'status=', e?.status);
     } finally {
       sendBtn.disabled = false;
     }
@@ -302,7 +302,13 @@ export function init(config = {}) {
         }
         if (m.id) lastMessageId = m.id;
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e?.status === 401) {
+        console.error('[DynarisWidget] Poll failed: Invalid API key (401). Check NEXT_PUBLIC_CHAT_WIDGET_API_KEY.');
+      } else if (e?.status) {
+        console.error('[DynarisWidget] Poll failed:', e?.message ?? e, 'status=', e.status);
+      }
+    }
   }
 
   function startPolling() {

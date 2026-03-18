@@ -1,153 +1,42 @@
-# Dynaris Widget
+# @dynaris/widget
 
-An embeddable, zero-dependency chat widget that adds AI-powered chat to any website. It connects to the Dynaris gateway server via the `web_widget` channel, delivering the same pipeline used across WhatsApp and other Dynaris channels.
+**Add an AI agent to any website. One script tag.**
 
----
+A zero-dependency embeddable chat widget that connects your site to the [Dynaris](https://dynaris.ai) AI platform — the same pipeline powering WhatsApp, SMS, and every other Dynaris channel, now in a floating chat bubble on your page.
 
-## Table of Contents
+No frameworks. No backend to write. No configuration overhead. Drop it in and your users are talking to AI in under 2 minutes.
 
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Development](#development)
-- [Configuration](#configuration)
-- [Integration](#integration)
-  - [Script Tag](#script-tag)
-  - [NPM / ES Module](#npm--es-module)
-  - [React / Next.js](#react--nextjs)
-- [Build Output](#build-output)
-- [Publishing & Distribution](#publishing--distribution)
-- [API Contract](#api-contract)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-
----
-
-## Features
-
-- Drop-in chat widget via a single `<script>` tag or NPM import
-- Real-time messages via **SSE** (Server-Sent Events), with polling fallback
-- File & image attachments (paste or file picker, up to 5 MB)
-- Welcome message with **bold** markdown support
-- Sound notifications with in-widget toggle
-- Session persistence via `localStorage`
-- Configurable position, title, subtitle, and privacy policy link
-- TypeScript type definitions included
-- Zero production dependencies — pure ES modules
-
----
-
-## Prerequisites
-
-| Tool | Minimum Version | Notes |
-|------|----------------|-------|
-| Node.js | 18+ | Required by Vite |
-| pnpm | 10+ | `npm install -g pnpm` |
-| Gateway Server | — | Must implement the [chat widget API](#api-contract) |
-
-> The widget talks to the **gateway-server**. For local end-to-end testing you need the gateway running on `http://localhost:3001`.
-
----
-
-## Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/dynaris-ai/dynaris-widget.git
-cd dynaris-widget
+```html
+<script
+  src="https://unpkg.com/@dynaris/widget/dist/dynaris-widget.umd.cjs"
+  data-dynaris-widget="true"
+  data-user-id="YOUR_USER_ID"
+  data-title="Chat with Us"
+  data-welcome-message="Hi! How can I help you today?"
+></script>
 ```
 
-### 2. Install dependencies
+That's it. Seriously.
 
-```bash
-pnpm install
-```
-
-### 3. Start the development server
-
-```bash
-pnpm dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser. The demo page uses:
-
-- `userId: 'demo-user-id'`
-- `apiUrl: 'http://localhost:3001'`
-
-Make sure the gateway-server is running locally and has the chat widget routes implemented.
-
-### 4. Build for production
-
-```bash
-pnpm build
-```
-
-Output files land in `dist/`. See [Build Output](#build-output) for details.
+> **New to Dynaris?** Get your user ID and set up your AI agent at [dynaris.ai](https://dynaris.ai).
 
 ---
 
-## Development
+## Why This Widget
 
-### Available Scripts
-
-| Script | Command | Description |
-|--------|---------|-------------|
-| Dev server | `pnpm dev` | Starts Vite dev server with HMR on port 5173 |
-| Build | `pnpm build` | Produces ESM + UMD bundles in `dist/` |
-| Preview | `pnpm preview` | Serves the production build locally |
-
-### Project Structure
-
-```
-dynaris-widget/
-├── src/
-│   ├── index.js           # Entry point — reads script-tag data attrs, auto-initializes
-│   ├── widget.js          # Core widget logic: message handling, polling/SSE, sound
-│   ├── ui.js              # DOM construction and rendering
-│   ├── api.js             # HTTP + SSE communication with gateway
-│   ├── session.js         # Persistent session ID via localStorage
-│   └── styles.css         # All widget styles (inlined in UMD build)
-├── dynaris-widget.d.ts    # TypeScript type definitions
-├── vite.config.js         # Vite build configuration
-├── index.html             # Dev demo (ES module import)
-├── embed.html             # Dev demo (script tag embed)
-└── package.json
-```
-
-### Key Modules
-
-- **`src/widget.js`** — `init(config)` is the main export. Manages lifecycle, SSE/polling, and the controller API returned to callers.
-- **`src/ui.js`** — Builds the full widget DOM tree. Call `createWidget()` to get the root element and all sub-component references.
-- **`src/api.js`** — Thin HTTP client. All gateway calls live here so they're easy to swap out.
-- **`src/session.js`** — `getOrCreateSessionId()` reads/writes `dynaris_widget_session_id` in `localStorage`.
+- **Zero dependencies** — pure ES modules, 35 KB, no runtime bloat
+- **One file for script tag** — styles are inlined in the UMD build, nothing extra to load
+- **Real-time by default** — SSE streaming with automatic polling fallback
+- **File attachments** — users can paste images or attach files up to 5 MB
+- **Session persistence** — conversation history survives page reloads via `localStorage`
+- **Fully controllable** — programmatic `show()`, `hide()`, `send()`, `destroy()` API
+- **TypeScript support** — type definitions included out of the box
 
 ---
 
-## Configuration
+## Install
 
-All options can be set via **data attributes** (script tag) or a **config object** (JS/NPM).
-
-| Option | Data Attribute | JS Key | Required | Default | Description |
-|--------|---------------|--------|----------|---------|-------------|
-| User ID | `data-user-id` | `userId` | **Yes** | — | Dynaris account user ID (site owner) |
-| API URL | `data-api-url` | `apiUrl` | No | `https://api.dynaris.ai` | Gateway base URL |
-| Title | `data-title` | `title` | No | `Text Support` | Agent name shown in header |
-| Subtitle | `data-subtitle` | `subtitle` | No | `AI assistant` | Text under the agent name |
-| Welcome Message | `data-welcome-message` | `welcomeMessage` | No | — | First AI message shown on open. Supports `**bold**` |
-| Privacy Policy URL | `data-privacy-policy-url` | `privacyPolicyUrl` | No | — | Adds a Privacy Policy link in the widget footer |
-| Use Polling | `data-use-polling` | `usePolling` | No | `false` | `true` to use polling instead of SSE |
-| Position | `data-position` | `position` | No | `bottom-right` | `bottom-right` or `bottom-left` |
-| API Key | `data-api-key` | `apiKey` | No | — | Sent as `X-Api-Key` header if provided |
-
----
-
-## Integration
-
-### Script Tag
-
-The simplest way — add a single tag before `</body>`. Styles are bundled into the UMD file.
-
+**Script tag (zero setup):**
 ```html
 <script
   src="https://unpkg.com/@dynaris/widget/dist/dynaris-widget.umd.cjs"
@@ -158,22 +47,22 @@ The simplest way — add a single tag before `</body>`. Styles are bundled into 
   data-subtitle="AI assistant"
   data-welcome-message="Hello! How can I help you today?"
   data-privacy-policy-url="https://yoursite.com/privacy"
-  data-use-polling="false"
   data-position="bottom-right"
 ></script>
 ```
 
-> **Self-hosting:** Copy `dist/dynaris-widget.umd.cjs` to your CDN/static host and change the `src` to your URL for full control.
+**NPM:**
+```bash
+npm install @dynaris/widget
+# or
+pnpm add @dynaris/widget
+```
 
 ---
 
-### NPM / ES Module
+## Integration
 
-```bash
-pnpm add @dynaris/widget
-# or
-npm install @dynaris/widget
-```
+### JavaScript / ES Module
 
 ```js
 import { init } from '@dynaris/widget';
@@ -181,23 +70,20 @@ import { init } from '@dynaris/widget';
 const controller = init({
   userId: 'YOUR_USER_ID',
   apiUrl: 'https://api.dynaris.ai',
-  title: 'Text Support',
+  title: 'Chat Support',
   subtitle: 'AI assistant',
-  welcomeMessage: 'Welcome! Please share your **name** and **email** to get started.',
+  welcomeMessage: 'Welcome! How can I help you?',
   privacyPolicyUrl: 'https://yoursite.com/privacy',
-  usePolling: false,
   position: 'bottom-right',
 });
 
-// Widget controller API
-controller.show();      // Open the chat panel
-controller.hide();      // Close the chat panel
-controller.toggle();    // Toggle visibility
-controller.send('Hi');  // Programmatically send a message
-controller.destroy();   // Remove widget from DOM and clean up listeners
+// Programmatic control
+controller.show();
+controller.hide();
+controller.toggle();
+controller.send('Hello!');
+controller.destroy();
 ```
-
----
 
 ### React / Next.js
 
@@ -218,14 +104,14 @@ export function ChatWidget() {
     return () => ctrl?.destroy();
   }, []);
 
-  return null; // Widget mounts itself into document.body
+  return null;
 }
 ```
 
 Add to your root layout:
 
 ```jsx
-// app/layout.jsx (Next.js App Router)
+// app/layout.jsx
 import { ChatWidget } from '@/components/ChatWidget';
 
 export default function RootLayout({ children }) {
@@ -240,8 +126,7 @@ export default function RootLayout({ children }) {
 }
 ```
 
-**Environment variables** (`.env.local`):
-
+`.env.local`:
 ```env
 NEXT_PUBLIC_DYNARIS_USER_ID=your_user_id_here
 NEXT_PUBLIC_DYNARIS_API_URL=https://api.dynaris.ai
@@ -249,104 +134,89 @@ NEXT_PUBLIC_DYNARIS_API_URL=https://api.dynaris.ai
 
 ---
 
-## Build Output
+## Configuration
 
-Running `pnpm build` produces two files in `dist/`:
+All options work as `data-*` attributes (script tag) or keys in the config object (JS/NPM).
 
-| File | Format | Best For |
-|------|--------|---------|
-| `dist/dynaris-widget.es.js` | ESM | `import { init } from '@dynaris/widget'` — bundlers, Vite, Next.js |
-| `dist/dynaris-widget.umd.cjs` | UMD | `<script>` tag embedding — styles are inlined, single self-contained file |
+| Option | Data Attribute | JS Key | Default | Description |
+|--------|---------------|--------|---------|-------------|
+| User ID | `data-user-id` | `userId` | — | Your Dynaris user ID |
+| API Key | `data-api-key` | `apiKey` | — | Sent as `X-Api-Key` header |
+| API URL | `data-api-url` | `apiUrl` | `https://api.dynaris.ai` | Gateway base URL |
+| Title | `data-title` | `title` | `Chat` | Agent name in the header |
+| Subtitle | `data-subtitle` | `subtitle` | `Speak directly with our AI` | Text under the title |
+| Welcome Message | `data-welcome-message` | `welcomeMessage` | — | First message shown on open. Supports `**bold**` |
+| Privacy Policy URL | `data-privacy-policy-url` | `privacyPolicyUrl` | — | Adds a privacy link in the footer |
+| Position | `data-position` | `position` | `bottom-right` | `bottom-right` or `bottom-left` |
+| Use Polling | `data-use-polling` | `usePolling` | `false` | Force polling instead of SSE |
 
 ---
 
-## Publishing & Distribution
+## Build Output
 
-### Publish to NPM
+| File | Format | Use Case |
+|------|--------|---------|
+| `dist/dynaris-widget.es.js` | ESM | Bundlers (Vite, Next.js, Webpack) |
+| `dist/dynaris-widget.umd.cjs` | UMD | `<script>` tag — styles inlined, single file |
+
+---
+
+## Development
+
+**Prerequisites:** Node.js 18+, pnpm 10+, gateway server running on `localhost:3001`
 
 ```bash
-# Bump version in package.json first
-pnpm build
-npm publish --access public
+git clone https://github.com/dynaris-ai/dynaris-widget.git
+cd dynaris-widget
+pnpm install
+pnpm dev       # http://localhost:5173 — live reload
+pnpm build     # produces dist/
+pnpm preview   # serve the production build
 ```
 
-### Use a local path (monorepos)
+### Project Structure
 
-In a consuming repo's `package.json`:
-
-```json
-{
-  "dependencies": {
-    "@dynaris/widget": "file:../dynaris-widget"
-  }
-}
 ```
-
-Then run `pnpm install` in the consuming repo.
-
-### CDN / Static host
-
-Copy `dist/dynaris-widget.umd.cjs` to your static host and reference it directly in the script `src`.
+src/
+├── index.js      # Entry point — reads data attrs, auto-initializes
+├── widget.js     # Core logic: messaging, SSE/polling, lifecycle
+├── ui.js         # DOM construction and rendering
+├── api.js        # HTTP + SSE gateway client
+├── session.js    # Session persistence via localStorage
+└── styles.css    # All styles (inlined in UMD build)
+```
 
 ---
 
 ## API Contract
 
-The widget communicates with the following gateway endpoints. All requests include a `session_id` (UUID persisted in `localStorage`).
+The widget talks to three gateway endpoints. All requests include a `session_id` (UUID persisted in `localStorage`).
 
 ### `POST /api/chat-widget/message`
 
-Send a user message.
-
-**Request body:**
 ```json
 {
   "user_id": "string",
   "session_id": "string",
   "message": "string",
-  "attachments": [
-    {
-      "name": "file.pdf",
-      "type": "application/pdf",
-      "data": "<base64>"
-    }
-  ]
+  "attachments": [{ "name": "file.pdf", "type": "application/pdf", "data": "<base64>" }]
 }
 ```
-
-**Response:** `200 OK` (body ignored by widget)
-
----
 
 ### `GET /api/chat-widget/messages`
 
-Poll for new messages (used when `usePolling: true` or SSE is unavailable).
+Query params: `user_id`, `session_id`, `after` (last seen message ID)
 
-**Query params:** `user_id`, `session_id`, `after` (last seen message ID)
-
-**Response:**
 ```json
 {
-  "messages": [
-    {
-      "id": "string",
-      "direction": "inbound",
-      "content": "Hello!",
-      "createdAt": "2024-01-01T00:00:00Z"
-    }
-  ]
+  "messages": [{ "id": "string", "direction": "inbound", "content": "Hello!", "createdAt": "..." }]
 }
 ```
 
----
-
 ### `GET /api/chat-widget/sse`
 
-Server-Sent Events stream for real-time replies.
+Query params: `user_id`, `session_id`
 
-**Query params:** `user_id`, `session_id`
-
-**Event format:**
 ```
 event: chat_new_message
 data: {"type":"chat_new_message","data":{"message":{"id":"...","content":"Hello!","direction":"inbound"}}}
@@ -354,74 +224,32 @@ data: {"type":"chat_new_message","data":{"message":{"id":"...","content":"Hello!
 
 ---
 
-### `POST /api/chat-widget/transcript`
-
-Send chat transcript (optional — called on session end if implemented).
-
-**Request body:**
-```json
-{
-  "user_id": "string",
-  "session_id": "string",
-  "messages": [...]
-}
-```
-
----
-
 ## Troubleshooting
 
-### Widget doesn't appear
+**Widget doesn't appear** — Check the browser console. Ensure `data-user-id` is set and the script loads (Network tab).
 
-- Check the browser console for errors.
-- Ensure `data-user-id` (or `userId`) is set.
-- Confirm the script `src` path is correct and the file loads (Network tab).
+**No replies coming through** — Verify the gateway is running and `data-api-url` is correct. Try `data-use-polling="true"` — some proxies block SSE.
 
-### Messages send but no replies arrive
+**SSE keeps reconnecting** — Set `proxy_buffering off` in nginx, or switch to polling mode. Check CORS headers on the gateway.
 
-- Verify the gateway is running and the chat widget routes are implemented.
-- Check `data-api-url` points to the correct gateway URL.
-- Try switching to polling mode: `data-use-polling="true"` — SSE connections may be blocked by some proxies.
+**Styles look broken** — For NPM/ESM use, ensure your bundler isn't tree-shaking the CSS. The UMD build has styles inlined — no separate CSS needed.
 
-### SSE connection fails / keeps reconnecting
-
-- Some reverse proxies (nginx, Cloudflare) buffer SSE. Set `proxy_buffering off` in nginx or use polling mode.
-- Check CORS headers on the gateway allow your widget's origin.
-
-### Styles look broken
-
-- If importing via NPM/ESM, make sure your bundler isn't tree-shaking the CSS import in `src/index.js`.
-- The UMD build has styles inlined — no separate CSS file needed for script tag use.
-
-### Session resets on every page load
-
-- `localStorage` must be available. Some browsers block it in private/incognito mode or when third-party cookies are blocked.
-
-### TypeScript errors
-
-- The `dynaris-widget.d.ts` type definitions are in the package root. If your IDE doesn't pick them up, add `"types": ["@dynaris/widget"]` to your `tsconfig.json`.
+**Session resets on every load** — `localStorage` must be available. Some browsers block it in private/incognito mode.
 
 ---
 
 ## Contributing
 
-1. Fork the repository and create a feature branch:
-   ```bash
-   git checkout -b feat/my-feature
-   ```
+1. Fork and create a feature branch: `git checkout -b feat/my-feature`
+2. Make changes in `src/`. Keep production dependencies at zero.
+3. Test locally with `pnpm dev` against a running gateway — test both SSE and polling modes.
+4. Build and verify: `pnpm build`
+5. Open a PR against `main`.
 
-2. Make your changes in `src/`. Keep production dependencies at zero.
+---
 
-3. Test locally with `pnpm dev` against a running gateway.
+## Powered by Dynaris
 
-4. Build and verify output:
-   ```bash
-   pnpm build
-   ```
+This widget is the frontend for the [Dynaris](https://dynaris.ai) AI platform — a multi-agent orchestration system that can automate workflows across your entire software stack. The same AI that responds in this chat can connect to your CRM, send emails, update Jira tickets, and more.
 
-5. Open a pull request against `main` with a clear description of the change.
-
-**Guidelines:**
-- No external runtime dependencies — the widget must stay self-contained.
-- Keep the UMD bundle as a single file (styles inlined via `vite.config.js`).
-- Test both SSE and polling modes before submitting.
+[Get started at dynaris.ai →](https://dynaris.ai)

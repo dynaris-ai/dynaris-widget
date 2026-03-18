@@ -14,15 +14,15 @@
 @keyframes dynaris-widget-pulse-glow {
   0%, 100% {
     box-shadow:
-      0 0 0 0 rgba(59, 130, 246, 0.6),
-      0 0 20px 4px rgba(59, 130, 246, 0.5),
-      0 0 40px 8px rgba(59, 130, 246, 0.2);
+      0 0 0 0 rgba(0, 0, 0, 0.4),
+      0 0 20px 4px rgba(0, 0, 0, 0.2),
+      0 0 40px 8px rgba(0, 0, 0, 0.1);
   }
   50% {
     box-shadow:
-      0 0 0 16px rgba(59, 130, 246, 0),
-      0 0 32px 8px rgba(59, 130, 246, 0.7),
-      0 0 60px 16px rgba(59, 130, 246, 0.3);
+      0 0 0 16px rgba(0, 0, 0, 0),
+      0 0 32px 8px rgba(0, 0, 0, 0.3),
+      0 0 60px 16px rgba(0, 0, 0, 0.15);
   }
 }
 
@@ -43,7 +43,7 @@
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -341,7 +341,7 @@
 }
 
 .dynaris-widget-toggle-track.is-on {
-  background: #6b21a8;
+  background: #111111;
 }
 
 .dynaris-widget-toggle-thumb {
@@ -460,7 +460,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #6b21a8;
+  background: #111111;
   color: #fff;
   display: flex;
   align-items: center;
@@ -568,7 +568,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #6b21a8;
+  background: #111111;
   color: #fff;
   display: flex;
   align-items: center;
@@ -605,7 +605,7 @@
 }
 
 .dynaris-widget-msg-outbound {
-  background: #6b21a8;
+  background: #111111;
   color: #fff;
 }
 
@@ -641,7 +641,7 @@
 }
 
 .dynaris-widget-privacy-banner a {
-  color: #6b21a8;
+  color: #111111;
   text-decoration: underline;
   font-weight: 500;
 }
@@ -831,7 +831,7 @@
 }
 
 .dynaris-widget-send:hover:not(:disabled) {
-  background: #6b21a8;
+  background: #111111;
   color: #fff;
 }
 
@@ -872,7 +872,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #6b21a8;
+  color: #111111;
   text-decoration: none;
 }
 

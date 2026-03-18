@@ -30,10 +30,6 @@ export function createWidget(config) {
     embedPageUrl = null,
   } = config;
 
-  if (!userId) {
-    console.error('[DynarisWidget] user_id is required');
-    return null;
-  }
 
   const container = document.createElement('div');
   container.className = 'dynaris-widget-container';
