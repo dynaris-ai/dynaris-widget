@@ -67,6 +67,7 @@ export function init(config = {}) {
   let pollTimer = null;
   let lastMessageId = null;
   let eventSource = null;
+  const recentOptimisticBodies = []; // { body, at }[] — skip matching inbound from poll
 
   async function showPanel() {
     unlockAudio();
@@ -272,6 +273,7 @@ export function init(config = {}) {
     sendBtn.disabled = true;
     const toSend = [...pendingAttachments];
     addOutboundMessage(t || null, toSend);
+    if (t) recentOptimisticBodies.push({ body: t, at: Date.now() });
     input.value = '';
     pendingAttachments = [];
     renderAttachmentChips();
@@ -292,9 +294,26 @@ export function init(config = {}) {
 
   async function pollMessages() {
     try {
+      const now = Date.now();
+      const maxAge = 10000;
+      for (let i = recentOptimisticBodies.length - 1; i >= 0; i--) {
+        if (now - recentOptimisticBodies[i].at > maxAge) recentOptimisticBodies.splice(i, 1);
+      }
       const data = await fetchMessages(apiUrl, userId, sessionId, lastMessageId, apiKey);
       const messages = data.messages ?? [];
       for (const m of messages) {
+        const isUserMessage = m.direction === 'inbound';
+        if (isUserMessage && recentOptimisticBodies.length > 0) {
+          const body = (m.content?.body ?? '').trim();
+          const idx = recentOptimisticBodies.findIndex(
+            (o) => o.body === body && now - o.at < 5000
+          );
+          if (idx >= 0) {
+            recentOptimisticBodies.splice(idx, 1);
+            if (m.id) lastMessageId = m.id;
+            continue;
+          }
+        }
         if (m.direction === 'outbound') {
           addInboundMessage(m);
         } else {
