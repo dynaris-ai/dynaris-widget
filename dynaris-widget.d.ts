@@ -27,6 +27,13 @@ export interface ChatWidgetConfig {
   usePolling?: boolean;
   useSse?: boolean;
   position?: 'bottom-right' | 'bottom-left';
+  /**
+   * `embed` — floating launcher + panel (default).
+   * `mobile-app` — full-viewport panel for in-app WebViews; safe-area aware; back posts `dynaris-widget:close`.
+   */
+  viewer?: 'embed' | 'mobile-app';
+  /** When false, shows footer even in mobile-app viewer. Default: hidden for mobile-app only. */
+  hidePoweredBy?: boolean;
   stylesUrl?: string;
 }
 

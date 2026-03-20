@@ -28,6 +28,8 @@ export function createWidget(config) {
     headerLogoUrl = null,
     logoUrl = null,
     embedPageUrl = null,
+    viewer = 'embed',
+    hidePoweredBy = false,
   } = config;
 
 
@@ -259,13 +261,23 @@ export function createWidget(config) {
     privacyBanner.classList.add('dynaris-widget-privacy-dismissed');
   }
 
-  const posMap = {
-    'bottom-right': { bottom: '20px', right: '20px' },
-    'bottom-left': { bottom: '20px', left: '20px', right: 'auto' },
-  };
-  const pos = posMap[position] || posMap['bottom-right'];
-  Object.assign(btn.style, pos);
-  Object.assign(panel.style, { ...pos, bottom: '84px' });
+  const isMobileAppViewer = viewer === 'mobile-app';
+
+  if (isMobileAppViewer) {
+    container.classList.add('dynaris-widget-viewer-mobile-app');
+    btn.style.display = 'none';
+    minimizeBtn.innerHTML = ICONS.back;
+    minimizeBtn.setAttribute('aria-label', 'Back');
+    footer.style.display = hidePoweredBy ? 'none' : '';
+  } else {
+    const posMap = {
+      'bottom-right': { bottom: '20px', right: '20px' },
+      'bottom-left': { bottom: '20px', left: '20px', right: 'auto' },
+    };
+    const pos = posMap[position] || posMap['bottom-right'];
+    Object.assign(btn.style, pos);
+    Object.assign(panel.style, { ...pos, bottom: '84px' });
+  }
 
   return {
     container,
@@ -283,7 +295,8 @@ export function createWidget(config) {
     soundToggleTrack: toggleTrack,
     minimizeBtn,
     welcomeMessage: welcomeMessage || null,
-    config: { apiUrl, userId, title, subtitle, position, embedPageUrl },
+    isMobileAppViewer,
+    config: { apiUrl, userId, title, subtitle, position, embedPageUrl, viewer },
   };
 }
 

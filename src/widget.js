@@ -1,3 +1,4 @@
+import widgetStyles from './styles.css?inline';
 import { getOrCreateSessionId } from './session.js';
 import { sendMessage as apiSendMessage, fetchMessages, createEventSource } from './api.js';
 import {
@@ -9,10 +10,36 @@ import {
   appendWaitingHint,
   removeWaitingHint,
 } from './ui.js';
+import { normalizeViewerMode, VIEWER_MOBILE_APP } from './viewer-mode.js';
 
 const POLL_INTERVAL_MS = 2500;
 
+function injectWidgetStyles(css) {
+  const id = 'dynaris-widget-styles';
+  if (typeof document === 'undefined' || document.getElementById(id)) {
+    return;
+  }
+  const el = document.createElement('style');
+  el.id = id;
+  el.textContent = css;
+  document.head.appendChild(el);
+}
+
+function notifyHostClose() {
+  const detail = { type: 'dynaris-widget:close', source: 'dynaris-widget' };
+  window.dispatchEvent(new CustomEvent('dynaris-widget:close', { detail }));
+  const rn = window.ReactNativeWebView;
+  if (rn && typeof rn.postMessage === 'function') {
+    rn.postMessage(JSON.stringify(detail));
+    return;
+  }
+  if (window.parent !== window) {
+    window.parent.postMessage(detail, '*');
+  }
+}
+
 export function init(config = {}) {
+  injectWidgetStyles(widgetStyles);
   const apiKey = config.apiKey ?? config.api_key;
   const userId = config.userId ?? config.user_id;
   if (!apiKey && !userId) {
@@ -23,7 +50,11 @@ export function init(config = {}) {
   const sessionId = getOrCreateSessionId();
   const apiUrl = config.apiUrl ?? config.api_url ?? 'https://api.dynaris.ai';
   const usePolling = config.usePolling ?? !config.useSse;
-  const title = config.title ?? 'Chat';
+  const viewerMode = normalizeViewerMode(config.viewer);
+  const hidePoweredBy =
+    config.hidePoweredBy !== undefined
+      ? config.hidePoweredBy
+      : viewerMode === VIEWER_MOBILE_APP;
 
   const ui = createWidget({
     apiUrl,
@@ -31,13 +62,14 @@ export function init(config = {}) {
     title: config.title ?? 'Chat with us',
     subtitle: config.subtitle ?? 'Speak directly with our AI',
     position: config.position ?? 'bottom-right',
-    stylesUrl: config.stylesUrl,
     welcomeMessage: config.welcomeMessage,
     privacyPolicyUrl: config.privacyPolicyUrl,
     poweredByUrl: config.poweredByUrl,
     poweredByLogoUrl: config.poweredByLogoUrl,
     headerLogoUrl: config.headerLogoUrl,
     logoUrl: config.logoUrl,
+    viewer: viewerMode,
+    hidePoweredBy,
   });
 
   if (!ui) return null;
@@ -57,6 +89,7 @@ export function init(config = {}) {
     soundToggleTrack,
     minimizeBtn,
     welcomeMessage,
+    isMobileAppViewer,
   } = ui;
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -364,6 +397,9 @@ export function init(config = {}) {
 
   minimizeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (isMobileAppViewer) {
+      notifyHostClose();
+    }
     onClose();
   });
 
@@ -425,5 +461,16 @@ export function init(config = {}) {
     },
   };
 
+  if (isMobileAppViewer) {
+    void showPanel();
+    if (usePolling) {
+      startPolling();
+    } else {
+      connectSse();
+    }
+  }
+
   return controller;
 }
+
+export default init;

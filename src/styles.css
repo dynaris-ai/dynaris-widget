@@ -883,3 +883,60 @@
   flex-shrink: 0;
   object-fit: contain;
 }
+
+/* Full-screen host (e.g. React Native WebView): no floating launcher, safe areas */
+.dynaris-widget-viewer-mobile-app {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483640;
+  pointer-events: none;
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-btn {
+  display: none !important;
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-panel {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-panel-header {
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-radius: 0;
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-panel-messages {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-input-wrapper {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-input-section {
+  padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-footer {
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+.dynaris-widget-viewer-mobile-app .dynaris-widget-menu-dropdown {
+  left: max(16px, env(safe-area-inset-left, 0px));
+}
