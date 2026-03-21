@@ -35,7 +35,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/dynaris/dynaris-widget"
+    "url": "https://github.com/dynaris-ai/dynaris-widget"
   },
   "packageManager": "pnpm@10.15.0"
 }
