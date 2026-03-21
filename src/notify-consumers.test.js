@@ -7,6 +7,7 @@ import {
   getConsumerRepos,
   getGithubToken,
   loadPublishedPackage,
+  main,
 } from '../scripts/notify-consumers.js';
 
 describe('getConsumerRepos', () => {
@@ -34,8 +35,8 @@ describe('getGithubToken', () => {
     ).toBe('dispatch-token');
   });
 
-  it('throws when no token is configured', () => {
-    expect(() => getGithubToken({})).toThrow(/Missing GitHub token/);
+  it('returns null when no token is configured', () => {
+    expect(getGithubToken({})).toBeNull();
   });
 });
 
@@ -68,6 +69,23 @@ describe('buildDispatchPayload', () => {
         version: '1.2.3',
       },
     });
+  });
+});
+
+describe('main', () => {
+  it('skips dispatch when no GitHub token is set', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchImpl = vi.fn();
+    const readFileImpl = vi.fn();
+
+    await main({ env: {}, fetchImpl, readFileImpl });
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(readFileImpl).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('No GitHub token'),
+    );
+    warn.mockRestore();
   });
 });
 

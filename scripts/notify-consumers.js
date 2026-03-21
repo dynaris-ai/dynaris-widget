@@ -24,19 +24,15 @@ export function getConsumerRepos(env = process.env) {
     .filter(Boolean);
 }
 
+/** @returns {string | null} trimmed token, or null if unset (consumer dispatch is optional after npm publish). */
 export function getGithubToken(env = process.env) {
   const token =
     env.DYNARIS_CONSUMER_DISPATCH_TOKEN ??
     env.GITHUB_TOKEN ??
     env.GH_TOKEN;
 
-  if (!token?.trim()) {
-    throw new Error(
-      'Missing GitHub token. Set DYNARIS_CONSUMER_DISPATCH_TOKEN, GITHUB_TOKEN, or GH_TOKEN before publishing.'
-    );
-  }
-
-  return token.trim();
+  const trimmed = token?.trim();
+  return trimmed ? trimmed : null;
 }
 
 export async function loadPublishedPackage(readFileImpl = readFile) {
@@ -106,6 +102,13 @@ export async function main({
   }
 
   const token = getGithubToken(env);
+  if (!token) {
+    console.warn(
+      '[notify-consumers] No GitHub token (set GITHUB_TOKEN, GH_TOKEN, or DYNARIS_CONSUMER_DISPATCH_TOKEN); skipping repository_dispatch to consumer repos.'
+    );
+    return;
+  }
+
   const pkg = await loadPublishedPackage(readFileImpl);
   const payload = buildDispatchPayload(pkg);
   const consumerRepos = getConsumerRepos(env);

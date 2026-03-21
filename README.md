@@ -238,6 +238,23 @@ data: {"type":"chat_new_message","data":{"message":{"id":"...","content":"Hello!
 
 ---
 
+## Release (maintainers)
+
+**Registry policy:** npm does not allow republishing the same version. Unpublishing may be blocked if the package is old or heavily downloaded—see [unpublish policy](https://docs.npmjs.com/policies/unpublish).
+
+**Resetting the public line to `1.0.0`:** If older prerelease-style tags exist (`1.0.1`, `1.0.2`, …), publishing `1.0.0` alone does **not** move `latest` (npm keeps `latest` on the highest semver). Remove the old tarballs first, then publish:
+
+```bash
+npm unpublish @dynaris/widget@1.0.3
+npm unpublish @dynaris/widget@1.0.2
+npm unpublish @dynaris/widget@1.0.1
+pnpm build && pnpm test && pnpm publish
+```
+
+If unpublish is denied, use **`npm deprecate @dynaris/widget@"<2.0.0"`** and ship a new major (e.g. **`2.0.0`**) instead, or contact npm support.
+
+`publishConfig.access` is **`public`**. Use ASCII `--` in the shell, not `—`. Run publish from this repo root.
+
 ## Contributing
 
 1. Fork and create a feature branch: `git checkout -b feat/my-feature`
