@@ -5,3 +5,6 @@ dist
 *.log
 .DS_Store
 .pnpm-store/
+
+# Local-only maintainer docs (not committed)
+LOCAL-NPM-PUBLISH.md

@@ -10,6 +10,8 @@ import {
   appendWaitingHint,
   removeWaitingHint,
 } from './ui.js';
+import { getSpeechRecognitionCtor, supportsSpeechRecognition } from './speech.js';
+import { shouldShowImagePreview } from './attachment-preview.js';
 import { normalizeViewerMode, VIEWER_MOBILE_APP } from './viewer-mode.js';
 
 const POLL_INTERVAL_MS = 2500;
@@ -83,6 +85,7 @@ export function init(config = {}) {
     addBtn,
     fileInput,
     attachmentsPreview,
+    dictationBtn,
     menuBtn,
     menuDropdown,
     soundItem,
@@ -172,6 +175,27 @@ export function init(config = {}) {
     attachmentsPreview.style.display = pendingAttachments.length ? 'flex' : 'none';
     for (let i = 0; i < pendingAttachments.length; i++) {
       const att = pendingAttachments[i];
+      if (shouldShowImagePreview(att)) {
+        const wrap = document.createElement('div');
+        wrap.className = 'dynaris-widget-attachment-image-wrap';
+        const img = document.createElement('img');
+        img.className = 'dynaris-widget-attachment-preview-img';
+        img.src = att.data_url;
+        img.alt = att.filename || 'Pasted image';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'dynaris-widget-attachment-remove dynaris-widget-attachment-remove-on-image';
+        remove.innerHTML = '&times;';
+        remove.setAttribute('aria-label', 'Remove image');
+        remove.onclick = () => {
+          pendingAttachments.splice(i, 1);
+          renderAttachmentChips();
+        };
+        wrap.appendChild(img);
+        wrap.appendChild(remove);
+        attachmentsPreview.appendChild(wrap);
+        continue;
+      }
       const chip = document.createElement('span');
       chip.className = 'dynaris-widget-attachment-chip';
       chip.textContent = att.filename || 'file';
@@ -269,6 +293,101 @@ export function init(config = {}) {
     menuDropdown.classList.remove('is-open');
   }
 
+  const speechRecognitionSupported = supportsSpeechRecognition(window);
+  let recognition = null;
+  let dictationSeedText = '';
+  let dictationCommittedText = '';
+
+  function composeDictationValue(seed, transcript) {
+    const cleanSeed = String(seed || '').trim();
+    const cleanTranscript = String(transcript || '').trim();
+    if (!cleanSeed) return cleanTranscript;
+    if (!cleanTranscript) return cleanSeed;
+    return `${cleanSeed} ${cleanTranscript}`;
+  }
+
+  function setDictationState(isListening) {
+    dictationBtn.classList.toggle('is-listening', isListening);
+    dictationBtn.setAttribute('aria-label', isListening ? 'Stop dictation' : 'Start dictation');
+    dictationBtn.setAttribute('aria-pressed', isListening ? 'true' : 'false');
+  }
+
+  function stopDictation() {
+    if (!recognition) {
+      setDictationState(false);
+      return;
+    }
+    const currentRecognition = recognition;
+    recognition = null;
+    currentRecognition.stop();
+    setDictationState(false);
+  }
+
+  function startDictation() {
+    const SpeechRecognition = getSpeechRecognitionCtor(window);
+    if (!SpeechRecognition) return;
+
+    stopDictation();
+
+    recognition = new SpeechRecognition();
+    dictationSeedText = input.value;
+    dictationCommittedText = '';
+
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+
+    recognition.onstart = () => {
+      setDictationState(true);
+      input.focus();
+    };
+
+    recognition.onresult = (event) => {
+      let committed = dictationCommittedText;
+      let interim = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const transcript = event.results[i][0]?.transcript ?? '';
+        if (event.results[i].isFinal) {
+          committed = `${committed} ${transcript}`.trim();
+        } else {
+          interim = `${interim} ${transcript}`.trim();
+        }
+      }
+
+      dictationCommittedText = committed;
+      input.value = composeDictationValue(dictationSeedText, `${committed} ${interim}`.trim());
+    };
+
+    recognition.onerror = () => {
+      setDictationState(false);
+    };
+
+    recognition.onend = () => {
+      recognition = null;
+      setDictationState(false);
+      input.focus();
+    };
+
+    recognition.start();
+  }
+
+  if (!speechRecognitionSupported) {
+    dictationBtn.style.display = 'none';
+  } else {
+    setDictationState(false);
+    dictationBtn.addEventListener('click', () => {
+      if (recognition) stopDictation();
+      else startDictation();
+    });
+  }
+
+  function handleDocumentClick(e) {
+    if (!menuDropdown.contains(e.target) && !menuBtn.contains(e.target)) {
+      closeMenu();
+    }
+  }
+
   menuBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     menuDropdown.classList.toggle('is-open');
@@ -284,11 +403,7 @@ export function init(config = {}) {
     closeMenu();
   });
 
-  document.addEventListener('click', (e) => {
-    if (!menuDropdown.contains(e.target) && !menuBtn.contains(e.target)) {
-      closeMenu();
-    }
-  });
+  document.addEventListener('click', handleDocumentClick);
 
   function addInboundMessage(msg) {
     removeTypingIndicator(messagesEl);
@@ -302,6 +417,7 @@ export function init(config = {}) {
     const t = String(text || '').trim();
     if (!t && pendingAttachments.length === 0) return;
 
+    stopDictation();
     removeWaitingHint(messagesEl);
     sendBtn.disabled = true;
     const toSend = [...pendingAttachments];
@@ -424,21 +540,22 @@ export function init(config = {}) {
     let hasImage = false;
     for (const item of items) {
       if (item.type.startsWith('image/')) {
-        hasImage = true;
         const file = item.getAsFile();
         if (file) {
+          hasImage = true;
           try {
             const att = await readFileAsBase64(file);
             pendingAttachments.push(att);
-            renderAttachmentChips();
           } catch (err) {
             console.warn('[DynarisWidget] Paste image failed:', err);
           }
         }
-        break;
       }
     }
-    if (hasImage) e.preventDefault();
+    if (hasImage) {
+      e.preventDefault();
+      renderAttachmentChips();
+    }
   });
 
   sendBtn.addEventListener('click', () => sendText(input.value));
@@ -457,6 +574,8 @@ export function init(config = {}) {
     destroy() {
       stopPolling();
       disconnectSse();
+      stopDictation();
+      document.removeEventListener('click', handleDocumentClick);
       ui.container.remove();
     },
   };

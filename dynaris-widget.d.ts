@@ -19,6 +19,10 @@ export interface ChatWidgetConfig {
   welcomeMessage?: string;
   privacyPolicyUrl?: string;
   poweredByUrl?: string;
+  /**
+   * Optional custom image URL for the powered-by mark. When omitted, the widget inlines the
+   * bundled Dynaris mark (same SVG as `website/public/dynaris.svg`), sized via CSS — no host `/public` asset required.
+   */
   poweredByLogoUrl?: string;
   headerLogoUrl?: string;
   logoUrl?: string;

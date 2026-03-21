@@ -1,3 +1,11 @@
+import { tokenizeInlineText } from './message-format.js';
+import poweredByMarkSvgRaw from './assets/dynaris.svg?raw';
+
+function scrollMessagesPanelToBottom(messagesListEl) {
+  const scrollRoot = messagesListEl?.parentElement;
+  if (scrollRoot) scrollRoot.scrollTop = scrollRoot.scrollHeight;
+}
+
 const ICONS = {
   chat: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>',
   back: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>',
@@ -9,10 +17,48 @@ const ICONS = {
   send: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>',
   user: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>',
   volume: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>',
+  privacy: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z" /></svg>',
+  mic: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 19v3"/><path d="M8 23h8"/></svg>',
 };
 
-const DYNARIS_MINI_LOGO =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 130 130"><path d="M65 0C100.899 0 130 29.1015 130 65C130 100.899 100.899 130 65 130H25.5537C31.0766 130 35.5537 125.523 35.5537 120V111.926C35.5537 109.376 36.5282 106.922 38.2773 105.066L56.1172 86.1406C58.0066 84.1363 60.64 83 63.3945 83H69.1299C74.6527 83 79.1299 78.5229 79.1299 73V57C79.1298 51.4772 74.6527 47 69.1299 47H63.3428C60.5882 47 57.9549 45.8638 56.0654 43.8594L38.2773 24.9893C36.5283 23.1338 35.5538 20.6798 35.5537 18.1299V10C35.5536 4.47723 31.0765 0 25.5537 0H65ZM0 28.9629C1.26271 33.0392 5.06238 36 9.55371 36H18.8535C21.6081 36 24.2414 37.1363 26.1309 39.1406L40.4062 54.2852C42.1554 56.1407 43.1299 58.5945 43.1299 61.1445V68.9102C43.1298 71.4601 42.1553 73.9141 40.4062 75.7695L26.1816 90.8594C24.2922 92.8638 21.6589 94 18.9043 94H9.55371C5.06282 94 1.26308 96.9604 0 101.036V28.9629Z" fill="#010101"/></svg>';
+function appendPoweredByMark(footerLink, poweredByLogoUrl) {
+  const url =
+    typeof poweredByLogoUrl === 'string' && poweredByLogoUrl.trim() !== ''
+      ? poweredByLogoUrl.trim()
+      : null;
+  if (url) {
+    const logoImg = document.createElement('img');
+    logoImg.src = url;
+    logoImg.alt = '';
+    logoImg.className = 'dynaris-widget-footer-logo';
+    footerLink.appendChild(logoImg);
+    return;
+  }
+
+  const tpl = document.createElement('template');
+  tpl.innerHTML = poweredByMarkSvgRaw.trim();
+  const parsed = tpl.content.firstElementChild;
+  if (
+    !parsed ||
+    parsed.namespaceURI !== 'http://www.w3.org/2000/svg' ||
+    parsed.localName !== 'svg'
+  ) {
+    throw new Error('DynarisWidget: bundled dynaris.svg is missing or invalid');
+  }
+
+  const svg = parsed.cloneNode(true);
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+  svg.setAttribute('class', 'dynaris-widget-footer-logo');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.querySelectorAll('[fill]').forEach((node) => {
+    const f = node.getAttribute('fill');
+    if (f && f !== 'none') {
+      node.setAttribute('fill', 'currentColor');
+    }
+  });
+  footerLink.appendChild(svg);
+}
 
 export function createWidget(config) {
   const {
@@ -144,34 +190,64 @@ export function createWidget(config) {
   header.appendChild(centerSection);
   header.appendChild(minimizeBtn);
 
-  const messagesEl = document.createElement('div');
-  messagesEl.className = 'dynaris-widget-panel-messages';
+  const messagesArea = document.createElement('div');
+  messagesArea.className = 'dynaris-widget-panel-messages-area';
 
-  const privacyBanner = document.createElement('div');
-  privacyBanner.className = 'dynaris-widget-privacy-banner';
+  const messagesScroll = document.createElement('div');
+  messagesScroll.className = 'dynaris-widget-panel-messages';
+
+  const messagesEl = document.createElement('div');
+  messagesEl.className = 'dynaris-widget-panel-messages-body';
+
+  const privacySlot = document.createElement('div');
+  privacySlot.className = 'dynaris-widget-privacy-slot';
+
+  const privacyCard = document.createElement('div');
+  privacyCard.className = 'dynaris-widget-privacy-card';
+
+  const privacyNote = document.createElement('div');
+  privacyNote.className = 'dynaris-widget-privacy-note';
+  privacyNote.innerHTML = ICONS.privacy;
   const privacyText = document.createElement('span');
+  privacyText.className = 'dynaris-widget-privacy-note-text';
   if (privacyPolicyUrl) {
-    privacyText.innerHTML = 'By chatting here, you agree we and authorized partners may process, monitor, and record this chat and your data in line with ';
     const privacyLink = document.createElement('a');
     privacyLink.href = privacyPolicyUrl;
     privacyLink.target = '_blank';
-    privacyLink.rel = 'noopener';
+    privacyLink.rel = 'noopener noreferrer';
+    privacyLink.className = 'dynaris-widget-privacy-link';
     privacyLink.textContent = 'Privacy Policy';
-    privacyText.appendChild(privacyLink);
-    privacyText.appendChild(document.createTextNode('.'));
+    privacyText.append(
+      document.createTextNode('By chatting, you agree to processing per our '),
+      privacyLink,
+      document.createTextNode('.'),
+    );
   } else {
-    privacyText.textContent = 'By chatting here, you agree we and authorized partners may process, monitor, and record this chat and your data.';
+    privacyText.textContent =
+      'By chatting, you agree to processing and recording.';
   }
+  privacyNote.appendChild(privacyText);
   const privacyDismiss = document.createElement('button');
   privacyDismiss.type = 'button';
   privacyDismiss.className = 'dynaris-widget-privacy-dismiss';
+  privacyDismiss.setAttribute('aria-label', 'Dismiss privacy notice');
   privacyDismiss.innerHTML = '&times;';
-  privacyDismiss.setAttribute('aria-label', 'Dismiss');
-  privacyBanner.appendChild(privacyText);
-  privacyBanner.appendChild(privacyDismiss);
+  privacyCard.appendChild(privacyNote);
+  privacyCard.appendChild(privacyDismiss);
+  privacySlot.appendChild(privacyCard);
+
+  messagesScroll.appendChild(messagesEl);
+  messagesArea.appendChild(messagesScroll);
+  messagesArea.appendChild(privacySlot);
 
   const inputSection = document.createElement('div');
   inputSection.className = 'dynaris-widget-input-section';
+
+  const dictationBtn = document.createElement('button');
+  dictationBtn.type = 'button';
+  dictationBtn.className = 'dynaris-widget-dictation-btn';
+  dictationBtn.innerHTML = ICONS.mic;
+  dictationBtn.setAttribute('aria-label', 'Start dictation');
 
   const inputWrap = document.createElement('div');
   inputWrap.className = 'dynaris-widget-input-wrap';
@@ -207,6 +283,7 @@ export function createWidget(config) {
   inputWrap.appendChild(addBtn);
   inputWrap.appendChild(fileInput);
   inputWrap.appendChild(input);
+  inputWrap.appendChild(dictationBtn);
   inputWrap.appendChild(sendBtn);
   inputSection.appendChild(inputWrap);
 
@@ -223,27 +300,18 @@ export function createWidget(config) {
   footerLink.target = '_blank';
   footerLink.rel = 'noopener';
   footerLink.className = 'dynaris-widget-footer-link';
-  if (poweredByLogoUrl) {
-    const logoImg = document.createElement('img');
-    logoImg.src = poweredByLogoUrl;
-    logoImg.alt = '';
-    logoImg.className = 'dynaris-widget-footer-logo';
-    footerLink.appendChild(logoImg);
-  } else {
-    footerLink.innerHTML = DYNARIS_MINI_LOGO;
-  }
+  appendPoweredByMark(footerLink, poweredByLogoUrl);
   footerLink.appendChild(document.createTextNode(' Dynaris'));
   footerInner.appendChild(footerLink);
   footer.appendChild(footerInner);
 
   const inputWrapper = document.createElement('div');
   inputWrapper.className = 'dynaris-widget-input-wrapper';
-  inputWrapper.appendChild(privacyBanner);
   inputWrapper.appendChild(inputSection);
 
   panel.appendChild(header);
   panel.appendChild(menuDropdown);
-  panel.appendChild(messagesEl);
+  panel.appendChild(messagesArea);
   panel.appendChild(inputWrapper);
   panel.appendChild(footer);
 
@@ -251,15 +319,8 @@ export function createWidget(config) {
   container.appendChild(panel);
 
   privacyDismiss.addEventListener('click', () => {
-    privacyBanner.classList.add('dynaris-widget-privacy-dismissed');
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('dynaris_widget_privacy_dismissed', '1');
-    }
+    privacySlot.classList.add('dynaris-widget-privacy-dismissed');
   });
-
-  if (typeof localStorage !== 'undefined' && localStorage.getItem('dynaris_widget_privacy_dismissed') === '1') {
-    privacyBanner.classList.add('dynaris-widget-privacy-dismissed');
-  }
 
   const isMobileAppViewer = viewer === 'mobile-app';
 
@@ -289,6 +350,7 @@ export function createWidget(config) {
     addBtn,
     fileInput,
     attachmentsPreview,
+    dictationBtn,
     menuBtn,
     menuDropdown,
     soundItem,
@@ -300,11 +362,31 @@ export function createWidget(config) {
   };
 }
 
-function escapeHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+function appendRichText(container, value) {
+  const tokens = tokenizeInlineText(value);
+  for (const token of tokens) {
+    if (token.type === 'lineBreak') {
+      container.appendChild(document.createElement('br'));
+      continue;
+    }
+
+    const node = token.type === 'link' ? document.createElement('a') : document.createElement(token.bold ? 'strong' : 'span');
+    if (token.type === 'link') {
+      node.href = token.href;
+      node.target = '_blank';
+      node.rel = 'noopener noreferrer';
+      node.textContent = token.value;
+      if (token.bold) {
+        const strong = document.createElement('strong');
+        strong.appendChild(node);
+        container.appendChild(strong);
+        continue;
+      }
+    } else {
+      node.textContent = token.value;
+    }
+    container.appendChild(node);
+  }
 }
 
 function parseMessageBody(msg) {
@@ -322,7 +404,7 @@ function parseMessageBody(msg) {
     if (content.caption) {
       const cap = document.createElement('div');
       cap.className = 'dynaris-widget-msg-caption';
-      cap.innerHTML = escapeHtml(content.caption).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      appendRichText(cap, content.caption);
       div.appendChild(cap);
     }
     return div;
@@ -339,14 +421,14 @@ function parseMessageBody(msg) {
     if (content.caption) {
       const cap = document.createElement('div');
       cap.className = 'dynaris-widget-msg-caption';
-      cap.innerHTML = escapeHtml(content.caption).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      appendRichText(cap, content.caption);
       div.appendChild(cap);
     }
     return div;
   }
 
   const body = content.body ?? content.raw ?? String(msg.content ?? '');
-  div.innerHTML = escapeHtml(body).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  appendRichText(div, body);
   return div;
 }
 
@@ -368,7 +450,7 @@ export function appendMessage(messagesEl, msg, direction, isAgent = false, anima
   row.appendChild(avatar);
   row.appendChild(bubble);
   messagesEl.appendChild(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  scrollMessagesPanelToBottom(messagesEl);
 }
 
 export function appendTypingIndicator(messagesEl) {
@@ -387,7 +469,7 @@ export function appendTypingIndicator(messagesEl) {
   row.appendChild(typing);
   row.dataset.typing = '1';
   messagesEl.appendChild(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  scrollMessagesPanelToBottom(messagesEl);
   return row;
 }
 
@@ -415,7 +497,7 @@ export function appendWaitingHint(messagesEl) {
   row.appendChild(avatar);
   row.appendChild(bubble);
   messagesEl.appendChild(row);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+  scrollMessagesPanelToBottom(messagesEl);
   return row;
 }
 
@@ -427,10 +509,6 @@ export function removeWaitingHint(messagesEl) {
 export function appendMessageWithTypewriter(messagesEl, msg, direction, isAgent, charMs = 6) {
   return new Promise((resolve) => {
     const body = msg.content?.body ?? msg.content?.raw ?? String(msg.content ?? '');
-    const escaped = body
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
 
     const row = document.createElement('div');
     row.className = `dynaris-widget-msg-row dynaris-widget-msg-row-${direction} dynaris-widget-msg-enter`;
@@ -452,14 +530,15 @@ export function appendMessageWithTypewriter(messagesEl, msg, direction, isAgent,
     let i = 0;
 
     function tick() {
-      if (i < escaped.length) {
-        const partial = escaped.slice(0, i + 1);
-        bodyEl.innerHTML = partial.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      if (i < body.length) {
+        bodyEl.textContent = body.slice(0, i + 1);
         i += 1;
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        scrollMessagesPanelToBottom(messagesEl);
         setTimeout(tick, charMs);
       } else {
-        bodyEl.innerHTML = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        bodyEl.textContent = '';
+        appendRichText(bodyEl, body);
+        scrollMessagesPanelToBottom(messagesEl);
         resolve();
       }
     }

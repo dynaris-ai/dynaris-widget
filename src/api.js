@@ -1,5 +1,15 @@
 const DEFAULT_API_URL = 'https://api.dynaris.ai';
 
+async function fetchWidget(url, init) {
+  try {
+    return await fetch(url, init);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const err = new Error(`Network error ${url}: ${msg}`);
+    throw err;
+  }
+}
+
 export async function sendMessage(apiUrl, userId, sessionId, message, apiKey, attachments = []) {
   const base = (apiUrl || DEFAULT_API_URL).replace(/\/$/, '');
   const headers = { 'Content-Type': 'application/json' };
@@ -15,7 +25,8 @@ export async function sendMessage(apiUrl, userId, sessionId, message, apiKey, at
       filename: a.filename || 'file',
     }));
   }
-  const res = await fetch(`${base}/api/chat-widget/message`, {
+  const url = `${base}/api/chat-widget/message`;
+  const res = await fetchWidget(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -34,7 +45,8 @@ export async function fetchMessages(apiUrl, userId, sessionId, after = null, api
   if (after) params.set('after', after);
   const headers = {};
   if (apiKey) headers['X-Api-Key'] = apiKey;
-  const res = await fetch(`${base}/api/chat-widget/messages?${params}`, { headers });
+  const url = `${base}/api/chat-widget/messages?${params}`;
+  const res = await fetchWidget(url, { headers });
   if (!res.ok) {
     const err = new Error(`Fetch failed: ${res.status} ${res.statusText}`);
     err.status = res.status;
@@ -47,7 +59,8 @@ export async function sendTranscript(apiUrl, userId, sessionId, email, apiKey) {
   const base = (apiUrl || DEFAULT_API_URL).replace(/\/$/, '');
   const headers = { 'Content-Type': 'application/json' };
   if (apiKey) headers['X-Api-Key'] = apiKey;
-  const res = await fetch(`${base}/api/chat-widget/transcript`, {
+  const url = `${base}/api/chat-widget/transcript`;
+  const res = await fetchWidget(url, {
     method: 'POST',
     headers,
     body: JSON.stringify({
