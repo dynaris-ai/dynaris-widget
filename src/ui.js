@@ -1,5 +1,6 @@
 import { tokenizeInlineText } from './message-format.js';
 import poweredByMarkSvgRaw from './assets/dynaris.svg?raw';
+import { parseVoicePhoneNumber } from './voice-phone.js';
 
 function scrollMessagesPanelToBottom(messagesListEl) {
   const scrollRoot = messagesListEl?.parentElement;
@@ -19,6 +20,8 @@ const ICONS = {
   volume: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>',
   privacy: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V7l7-4z" /></svg>',
   mic: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 19v3"/><path d="M8 23h8"/></svg>',
+  voice: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4"/><path d="M8 7v10"/><path d="M12 4v16"/><path d="M16 7v10"/><path d="M20 10v4"/></svg>',
+  phone: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
 };
 
 function appendPoweredByMark(footerLink, poweredByLogoUrl) {
@@ -76,8 +79,21 @@ export function createWidget(config) {
     embedPageUrl = null,
     viewer = 'embed',
     hidePoweredBy = false,
+    voiceEnabled = false,
+    voicePhoneNumber = null,
+    voiceCallUrl = null,
+    voiceCallLabel = 'Call our voice AI',
   } = config;
 
+  const voiceCallUrlTrimmed =
+    typeof voiceCallUrl === 'string' && voiceCallUrl.trim() !== ''
+      ? voiceCallUrl.trim()
+      : null;
+  const voiceDialParsed = parseVoicePhoneNumber(
+    typeof voicePhoneNumber === 'string' ? voicePhoneNumber : '',
+  );
+  const voiceHeaderHref = voiceCallUrlTrimmed ?? voiceDialParsed?.telHref ?? null;
+  const shouldRenderVoiceButton = Boolean(voiceEnabled);
 
   const container = document.createElement('div');
   container.className = 'dynaris-widget-container';
@@ -186,9 +202,53 @@ export function createWidget(config) {
   minimizeBtn.innerHTML = ICONS.minimize;
   minimizeBtn.setAttribute('aria-label', 'Minimize');
 
+  const headerRight = document.createElement('div');
+  headerRight.className = 'dynaris-widget-header-right';
+
+  let voiceControl = null;
+  if (shouldRenderVoiceButton) {
+    const voiceBtn = document.createElement('button');
+    voiceBtn.type = 'button';
+    voiceBtn.className = 'dynaris-widget-header-voice';
+    voiceBtn.innerHTML = `<span class="dynaris-widget-header-voice-icon" aria-hidden="true">${ICONS.voice}</span>`;
+    voiceBtn.setAttribute('aria-label', voiceCallLabel);
+    voiceBtn.setAttribute('data-state', 'idle');
+    const voiceTooltip = document.createElement('span');
+    voiceTooltip.className = 'dynaris-widget-header-voice-tooltip';
+    voiceTooltip.setAttribute('aria-hidden', 'true');
+    voiceTooltip.textContent = voiceCallLabel;
+    voiceBtn.appendChild(voiceTooltip);
+    headerRight.appendChild(voiceBtn);
+    voiceControl = voiceBtn;
+  } else if (voiceHeaderHref) {
+    const voiceLink = document.createElement('a');
+    voiceLink.href = voiceHeaderHref;
+    voiceLink.className = 'dynaris-widget-header-voice';
+    if (voiceCallUrlTrimmed) {
+      voiceLink.target = '_blank';
+      voiceLink.rel = 'noopener noreferrer';
+    }
+    voiceLink.innerHTML = `<span class="dynaris-widget-header-voice-icon" aria-hidden="true">${ICONS.phone}</span>`;
+    let voiceAria = voiceCallLabel;
+    let voiceTitle = voiceCallLabel;
+    if (voiceCallUrlTrimmed) {
+      voiceAria = `${voiceCallLabel} Opens in a new tab.`;
+      voiceTitle = `${voiceCallLabel} · Opens website`;
+    } else if (voiceDialParsed) {
+      voiceAria = `${voiceCallLabel} Dials ${voiceDialParsed.display}.`;
+      voiceTitle = `${voiceCallLabel} · ${voiceDialParsed.display}`;
+    }
+    voiceLink.setAttribute('aria-label', voiceAria);
+    voiceLink.setAttribute('title', voiceTitle);
+    headerRight.appendChild(voiceLink);
+    voiceControl = voiceLink;
+  }
+
+  headerRight.appendChild(minimizeBtn);
+
   header.appendChild(menuNav);
   header.appendChild(centerSection);
-  header.appendChild(minimizeBtn);
+  header.appendChild(headerRight);
 
   const messagesArea = document.createElement('div');
   messagesArea.className = 'dynaris-widget-panel-messages-area';
@@ -355,10 +415,20 @@ export function createWidget(config) {
     menuDropdown,
     soundItem,
     soundToggleTrack: toggleTrack,
+    voiceControl,
     minimizeBtn,
     welcomeMessage: welcomeMessage || null,
     isMobileAppViewer,
-    config: { apiUrl, userId, title, subtitle, position, embedPageUrl, viewer },
+    config: {
+      apiUrl,
+      userId,
+      title,
+      subtitle,
+      position,
+      embedPageUrl,
+      viewer,
+      voiceEnabled,
+    },
   };
 }
 

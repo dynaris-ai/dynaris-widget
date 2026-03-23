@@ -1,6 +1,6 @@
 {
   "name": "@dynaris/widget",
-  "version": "1.0.4",
+  "version": "1.0.7",
   "description": "Embeddable chat widget that connects to the Dynaris chat pipeline (web_widget channel)",
   "type": "module",
   "main": "dist/dynaris-widget.umd.cjs",
@@ -43,5 +43,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "livekit-client": "^2.17.3"
+  }
 }

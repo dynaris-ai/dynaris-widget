@@ -1,0 +1,140 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    sans-serif;
+  color: #0f172a;
+  background: linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.mock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mock-logo {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.mock-nav {
+  display: flex;
+  gap: 20px;
+}
+
+.mock-nav a {
+  color: #475569;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.mock-nav a:hover {
+  color: #0f172a;
+}
+
+.mock-main {
+  flex: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.mock-main h1 {
+  margin: 0 0 12px;
+  font-size: 28px;
+}
+
+.mock-lead {
+  margin: 0 0 28px;
+  color: #475569;
+  line-height: 1.55;
+}
+
+.mock-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.mock-card h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.mock-status {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mock-status.mock-ok {
+  color: #047857;
+}
+
+.mock-status.mock-warn {
+  color: #b45309;
+}
+
+.mock-status.mock-err {
+  color: #b91c1c;
+}
+
+.mock-dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+
+.mock-dl dt {
+  margin: 0;
+  color: #64748b;
+}
+
+.mock-dl dd {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.mock-hint {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.mock-hint code {
+  font-size: 11px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mock-footer {
+  padding: 20px 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}

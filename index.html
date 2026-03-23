@@ -1,25 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dynaris Widget Demo</title>
-</head>
-<body>
-  <h1>Dynaris Widget Demo</h1>
-  <p>Open the chat button in the bottom-right corner. Replace <code>data-user-id</code> with a real Dynaris user ID to test against the gateway.</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dynaris widget — local playground</title>
+    <link rel="stylesheet" href="/playground/site.css" />
+  </head>
+  <body>
+    <header class="mock-header">
+      <span class="mock-logo">MockHost</span>
+      <nav class="mock-nav">
+        <a href="#">Home</a>
+        <a href="#">Pricing</a>
+        <a href="#">Contact</a>
+      </nav>
+    </header>
 
-  <script type="module" src="/src/index.js"></script>
-  <script type="module">
-    import { init } from '/src/index.js';
-    init({
-      userId: 'demo-user-id',
-      apiUrl: 'http://localhost:3001',
-      title: 'Text Support',
-      subtitle: 'AI assistant',
-      welcomeMessage: 'Good morning and welcome. Please provide your **name** and **email** so I can assist you better. Also, describe your use case in as much detail as you can so I can help you effectively.',
-      usePolling: true,
-    });
-  </script>
-</body>
+    <main class="mock-main">
+      <h1>Playground host page</h1>
+      <p class="mock-lead">
+        The chat launcher should appear in the corner. Use the panel below to see how this page is
+        configured.
+      </p>
+      <section class="mock-card" id="config-panel" aria-live="polite">
+        <h2>Widget config</h2>
+        <p id="config-status" class="mock-status"></p>
+        <dl class="mock-dl" id="config-dl"></dl>
+        <p class="mock-hint">
+          The chat bubble should show by default (placeholder user). For real API traffic, set
+          <code>VITE_CHAT_WIDGET_API_KEY</code> in <code>playground/.env.local</code> or use query
+          params <code>?apiKey=…</code>. A mock or real API key lights up the header voice icon in
+          preview mode; set <code>VITE_CHAT_WIDGET_VOICE_AGENT_ID</code> or pass
+          <code>?voiceAgentId=…</code> to make it start a real browser voice session.
+        </p>
+      </section>
+    </main>
+
+    <footer class="mock-footer">Mock footer — dynaris-widget repo only</footer>
+
+    <script type="module" src="/playground/main.js"></script>
+  </body>
 </html>

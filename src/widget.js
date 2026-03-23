@@ -13,8 +13,19 @@ import {
 import { getSpeechRecognitionCtor, supportsSpeechRecognition } from './speech.js';
 import { shouldShowImagePreview } from './attachment-preview.js';
 import { normalizeViewerMode, VIEWER_MOBILE_APP } from './viewer-mode.js';
+import { createVoiceSessionManager } from './voice-session.js';
 
 const POLL_INTERVAL_MS = 2500;
+
+function setVoiceControlHoverText(control, text) {
+  const tooltip = control.querySelector('.dynaris-widget-header-voice-tooltip');
+  if (tooltip) {
+    tooltip.textContent = text;
+    control.removeAttribute('title');
+    return;
+  }
+  control.setAttribute('title', text);
+}
 
 function injectWidgetStyles(css) {
   const id = 'dynaris-widget-styles';
@@ -53,6 +64,12 @@ export function init(config = {}) {
   const apiUrl = config.apiUrl ?? config.api_url ?? 'https://api.dynaris.ai';
   const usePolling = config.usePolling ?? !config.useSse;
   const viewerMode = normalizeViewerMode(config.viewer);
+  const voiceEnabled = Boolean(
+    config.voiceEnabled ??
+      config.voice_enabled ??
+      config.voiceAgentId ??
+      config.voice_agent_id
+  );
   const hidePoweredBy =
     config.hidePoweredBy !== undefined
       ? config.hidePoweredBy
@@ -72,6 +89,10 @@ export function init(config = {}) {
     logoUrl: config.logoUrl,
     viewer: viewerMode,
     hidePoweredBy,
+    voiceEnabled,
+    voicePhoneNumber: config.voicePhoneNumber ?? config.voice_phone_number,
+    voiceCallUrl: config.voiceCallUrl ?? config.voice_call_url,
+    voiceCallLabel: config.voiceCallLabel ?? config.voice_call_label,
   });
 
   if (!ui) return null;
@@ -90,6 +111,7 @@ export function init(config = {}) {
     menuDropdown,
     soundItem,
     soundToggleTrack,
+    voiceControl,
     minimizeBtn,
     welcomeMessage,
     isMobileAppViewer,
@@ -104,6 +126,75 @@ export function init(config = {}) {
   let lastMessageId = null;
   let eventSource = null;
   const recentOptimisticBodies = []; // { body, at }[] — skip matching inbound from poll
+  const voiceLabel = config.voiceCallLabel ?? config.voice_call_label ?? 'Talk to our voice AI';
+  const voiceManager =
+    voiceEnabled && voiceControl?.tagName === 'BUTTON'
+      ? createVoiceSessionManager({
+          apiKey,
+          apiUrl,
+          sessionId,
+          voiceAgentId: config.voiceAgentId ?? config.voice_agent_id,
+          voiceParticipantName:
+            config.voiceParticipantName ??
+            config.voice_participant_name ??
+            undefined,
+          voiceSessionDurationMinutes:
+            config.voiceSessionDurationMinutes ??
+            config.voice_session_duration_minutes ??
+            60,
+          voiceAgentName: config.voiceAgentName ?? config.voice_agent_name ?? undefined,
+          voiceApiUrl: config.voiceApiUrl ?? config.voice_api_url ?? undefined,
+          onStateChange: ({ state, message }) => {
+            if (!voiceControl) return;
+            voiceControl.setAttribute('data-state', state);
+            setVoiceControlHoverText(voiceControl, message || voiceLabel);
+            voiceControl.setAttribute(
+              'aria-label',
+              message ? `${voiceLabel}. ${message}` : voiceLabel
+            );
+            if ('disabled' in voiceControl) {
+              voiceControl.disabled =
+                state === 'connecting' || state === 'disconnecting';
+            }
+          },
+          onTranscript: ({ speaker, text }) => {
+            appendMessage(
+              messagesEl,
+              {
+                content: { body: text },
+                messageType: 'text',
+                createdAt: new Date().toISOString(),
+              },
+              speaker === 'ai' ? 'inbound' : 'outbound',
+              speaker === 'ai'
+            );
+          },
+          onError: (error) => {
+            console.error('[DynarisWidget] Voice failed:', error?.message ?? error);
+          },
+        })
+      : null;
+
+  if (voiceEnabled && voiceControl && !apiKey) {
+    voiceControl.setAttribute('data-state', 'disabled');
+    setVoiceControlHoverText(voiceControl, 'Voice requires apiKey authentication.');
+    voiceControl.setAttribute(
+      'aria-label',
+      `${voiceLabel}. Voice requires apiKey authentication.`
+    );
+    if ('disabled' in voiceControl) {
+      voiceControl.disabled = true;
+    }
+  }
+
+  if (voiceEnabled && voiceControl && apiKey && !(config.voiceAgentId ?? config.voice_agent_id)) {
+    voiceControl.setAttribute('data-state', 'disabled');
+    setVoiceControlHoverText(voiceControl, 'Voice requires voiceAgentId.');
+    voiceControl.setAttribute('aria-label', `${voiceLabel}. Voice requires voiceAgentId.`);
+    if ('disabled' in voiceControl) {
+      voiceControl.disabled = true;
+    }
+  }
 
   async function showPanel() {
     unlockAudio();
@@ -137,7 +228,7 @@ export function init(config = {}) {
   function togglePanel() {
     const open = panel.style.display === 'flex';
     if (open) {
-      onClose();
+      void onClose();
     } else {
       showPanel();
       if (usePolling) startPolling();
@@ -503,10 +594,13 @@ export function init(config = {}) {
     }
   }
 
-  function onClose() {
+  async function onClose() {
     hidePanel();
     if (usePolling) stopPolling();
     else disconnectSse();
+    if (voiceManager?.isActive()) {
+      await voiceManager.stop();
+    }
   }
 
   btn.addEventListener('click', () => togglePanel());
@@ -516,8 +610,23 @@ export function init(config = {}) {
     if (isMobileAppViewer) {
       notifyHostClose();
     }
-    onClose();
+    void onClose();
   });
+
+  if (voiceManager && voiceControl) {
+    voiceControl.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      unlockAudio();
+      try {
+        if (voiceManager.isActive()) {
+          await voiceManager.stop();
+        } else {
+          await voiceManager.start();
+        }
+      } catch (_) {}
+    });
+  }
 
   addBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', async () => {
@@ -568,7 +677,9 @@ export function init(config = {}) {
 
   const controller = {
     show: showPanel,
-    hide: hidePanel,
+    hide() {
+      void onClose();
+    },
     toggle: togglePanel,
     send: sendText,
     destroy() {
@@ -576,7 +687,10 @@ export function init(config = {}) {
       disconnectSse();
       stopDictation();
       document.removeEventListener('click', handleDocumentClick);
-      ui.container.remove();
+      const voiceCleanup = voiceManager ? voiceManager.destroy() : null;
+      Promise.resolve(voiceCleanup).finally(() => {
+        ui.container.remove();
+      });
     },
   };
 

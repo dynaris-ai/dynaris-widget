@@ -51,6 +51,17 @@ function configFromScript(scriptEl) {
     headerLogoUrl: d.headerLogoUrl || undefined,
     logoUrl: d.logoUrl || undefined,
     embedPageUrl: d.embedPageUrl || undefined,
+    voiceEnabled: parseBoolean(d.voiceEnabled),
+    voiceAgentId: d.voiceAgentId || undefined,
+    voiceParticipantName: d.voiceParticipantName || undefined,
+    voiceSessionDurationMinutes: d.voiceSessionDurationMinutes
+      ? Number(d.voiceSessionDurationMinutes)
+      : undefined,
+    voiceAgentName: d.voiceAgentName || undefined,
+    voiceApiUrl: d.voiceApiUrl || undefined,
+    voicePhoneNumber: d.voicePhoneNumber || undefined,
+    voiceCallUrl: d.voiceCallUrl || undefined,
+    voiceCallLabel: d.voiceCallLabel || undefined,
     position: d.position || undefined,
     usePolling,
     useSse,
