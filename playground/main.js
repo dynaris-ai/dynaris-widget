@@ -101,7 +101,7 @@ const ctrl = init({
   subtitle: subtitle ?? 'Local dynaris-widget',
   usePolling: true,
   welcomeMessage: usingPlaceholderUser
-    ? '**Playground** — set `VITE_CHAT_WIDGET_API_KEY` in `playground/.env.local` to hit the real API.'
+    ? '**Playground** — set `VITE_CHAT_WIDGET_API_KEY` in `.env` or `.env.local` at the repo root to hit the real API.'
     : '**Playground** — messages go to the real API when `apiKey` is valid.',
   privacyPolicyUrl: 'https://dynaris.ai/privacy',
 });

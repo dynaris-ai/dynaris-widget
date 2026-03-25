@@ -1,6 +1,12 @@
 import { Room, RoomEvent, Track } from 'livekit-client';
 
-import { closeVoiceSession, startVoiceSession } from './voice-api.js';
+import {
+  closeVoiceSession,
+  isVoiceDebugEnabled,
+  resolveVoiceApiBaseUrl,
+  startVoiceSession,
+  voiceDprint,
+} from './voice-api.js';
 
 export const VOICE_STATE_IDLE = 'idle';
 export const VOICE_STATE_CONNECTING = 'connecting';
@@ -109,7 +115,33 @@ export function createVoiceSessionManager({
     }
 
     emitState(VOICE_STATE_CONNECTING, 'Connecting to voice AI...');
+
+    // Request mic permission before any network calls so the browser prompt fires
+    // immediately and we detect denial early.
+    let preflight = null;
     try {
+      preflight = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      const error = new Error('Microphone access was denied. Please allow microphone access and try again.');
+      removeAudioElements(audioElements);
+      handleError(error, error.message);
+      throw error;
+    }
+
+    try {
+      const voiceBase = resolveVoiceApiBaseUrl(apiUrl, voiceApiUrl);
+      if (isVoiceDebugEnabled()) {
+        voiceDprint(
+          'VOICE_SESSION_START',
+          `baseUrl=${voiceBase || '(empty — relative / wrong host)'} sessionId=${String(sessionId || '').slice(0, 8)}… agentId=${String(voiceAgentId || '').slice(0, 8)}…`,
+        );
+      }
+      if (!voiceBase) {
+        voiceDprint(
+          'VOICE_SESSION_CONFIG',
+          'voiceApiUrl and apiUrl are both empty — requests will hit the page origin, not the gateway. Set apiUrl / VITE_CHAT_WIDGET_API_URL.',
+        );
+      }
       voiceSession = await startVoiceSession(apiUrl, apiKey, {
         sessionId,
         agentId: voiceAgentId,
@@ -124,18 +156,37 @@ export function createVoiceSessionManager({
         dynacast: true,
       });
       bindRoomEvents(newRoom);
+
+      // Stop pre-flight stream before LiveKit opens its own mic track
+      preflight.getTracks().forEach((t) => t.stop());
+      preflight = null;
+
       await newRoom.connect(voiceSession.ws_url, voiceSession.token);
       await newRoom.localParticipant.setMicrophoneEnabled(true);
       room = newRoom;
       emitState(VOICE_STATE_LIVE, 'Voice AI is live.');
       return voiceSession;
     } catch (error) {
+      const st = error?.status ?? error?.cause?.status;
+      const url = error?.url;
+      voiceDprint(
+        'VOICE_SESSION_CATCH',
+        `message=${error?.message || error} status=${st ?? '—'} url=${url ?? '—'}`,
+      );
+      preflight?.getTracks().forEach((t) => t.stop());
       removeAudioElements(audioElements);
       room = null;
       voiceSession = null;
       handleError(error, 'Unable to start voice session.');
       throw error;
     }
+  }
+
+  async function toggleMic() {
+    if (!room) return false;
+    const enabled = room.localParticipant.isMicrophoneEnabled;
+    await room.localParticipant.setMicrophoneEnabled(!enabled).catch(() => {});
+    return !enabled;
   }
 
   async function stop() {
@@ -184,6 +235,7 @@ export function createVoiceSessionManager({
     start,
     stop,
     destroy,
+    toggleMic,
     getState() {
       return currentState;
     },

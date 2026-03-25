@@ -1,13 +1,12 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
 
 const repoRoot = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   root: '.',
-  /** Load `VITE_*` from playground so secrets stay next to the mock host. */
-  envDir: resolve(repoRoot, 'playground'),
+  /** Must match `.env.example` (repo root). `playground/` alone would ignore root `.env`. */
+  envDir: repoRoot,
   server: {
     port: 5173,
     open: true,

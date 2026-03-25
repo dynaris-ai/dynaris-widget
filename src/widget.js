@@ -14,6 +14,7 @@ import { getSpeechRecognitionCtor, supportsSpeechRecognition } from './speech.js
 import { shouldShowImagePreview } from './attachment-preview.js';
 import { normalizeViewerMode, VIEWER_MOBILE_APP } from './viewer-mode.js';
 import { createVoiceSessionManager } from './voice-session.js';
+import { createVoiceOverlay } from './voice-modal.js';
 
 const POLL_INTERVAL_MS = 2500;
 
@@ -127,6 +128,17 @@ export function init(config = {}) {
   let eventSource = null;
   const recentOptimisticBodies = []; // { body, at }[] — skip matching inbound from poll
   const voiceLabel = config.voiceCallLabel ?? config.voice_call_label ?? 'Talk to our voice AI';
+
+  let applyVoiceSessionComposerState = () => {};
+
+  // Create the in-widget voice overlay (renders on top of messages when active)
+  const voiceOverlay = voiceEnabled && voiceControl?.tagName === 'BUTTON'
+    ? createVoiceOverlay(panel, {
+        onEndCall: () => { voiceManager?.stop().catch(() => {}); },
+        onToggleMic: () => { voiceManager?.toggleMic().catch(() => {}); },
+      })
+    : null;
+
   const voiceManager =
     voiceEnabled && voiceControl?.tagName === 'BUTTON'
       ? createVoiceSessionManager({
@@ -145,29 +157,44 @@ export function init(config = {}) {
           voiceAgentName: config.voiceAgentName ?? config.voice_agent_name ?? undefined,
           voiceApiUrl: config.voiceApiUrl ?? config.voice_api_url ?? undefined,
           onStateChange: ({ state, message }) => {
-            if (!voiceControl) return;
-            voiceControl.setAttribute('data-state', state);
-            setVoiceControlHoverText(voiceControl, message || voiceLabel);
-            voiceControl.setAttribute(
-              'aria-label',
-              message ? `${voiceLabel}. ${message}` : voiceLabel
-            );
-            if ('disabled' in voiceControl) {
-              voiceControl.disabled =
-                state === 'connecting' || state === 'disconnecting';
+            applyVoiceSessionComposerState(state);
+            // Update header button
+            if (voiceControl) {
+              voiceControl.setAttribute('data-state', state);
+              setVoiceControlHoverText(voiceControl, message || voiceLabel);
+              voiceControl.setAttribute(
+                'aria-label',
+                message ? `${voiceLabel}. ${message}` : voiceLabel
+              );
+              if ('disabled' in voiceControl) {
+                voiceControl.disabled =
+                  state === 'connecting' || state === 'disconnecting';
+              }
+            }
+            // Drive the voice overlay
+            if (voiceOverlay) {
+              if (state === 'connecting') {
+                voiceOverlay.open();
+                voiceOverlay.setState('connecting', message || 'Connecting…');
+              } else if (state === 'live') {
+                voiceOverlay.setState('live', message || 'Voice AI is live.');
+              } else if (state === 'error') {
+                voiceOverlay.setState('error', message || 'Connection failed.');
+              } else if (state === 'idle' || state === 'disconnecting') {
+                if (state === 'idle') {
+                  voiceOverlay.setState(
+                    'ended',
+                    message || 'Voice session ended.'
+                  );
+                } else {
+                  voiceOverlay.setState('disconnecting', message || 'Ending call…');
+                }
+              }
             }
           },
           onTranscript: ({ speaker, text }) => {
-            appendMessage(
-              messagesEl,
-              {
-                content: { body: text },
-                messageType: 'text',
-                createdAt: new Date().toISOString(),
-              },
-              speaker === 'ai' ? 'inbound' : 'outbound',
-              speaker === 'ai'
-            );
+            // Add to voice overlay transcript pane
+            voiceOverlay?.addTranscript(speaker, text);
           },
           onError: (error) => {
             console.error('[DynarisWidget] Voice failed:', error?.message ?? error);
@@ -413,6 +440,15 @@ export function init(config = {}) {
     currentRecognition.stop();
     setDictationState(false);
   }
+
+  applyVoiceSessionComposerState = function applyVoiceSessionComposerStateImpl(state) {
+    const active =
+      state === 'connecting' || state === 'live' || state === 'disconnecting';
+    panel.classList.toggle('dynaris-widget-panel--voice-session-active', active);
+    if (active) {
+      stopDictation();
+    }
+  };
 
   function startDictation() {
     const SpeechRecognition = getSpeechRecognitionCtor(window);
@@ -687,6 +723,7 @@ export function init(config = {}) {
       disconnectSse();
       stopDictation();
       document.removeEventListener('click', handleDocumentClick);
+      voiceOverlay?.destroy();
       const voiceCleanup = voiceManager ? voiceManager.destroy() : null;
       Promise.resolve(voiceCleanup).finally(() => {
         ui.container.remove();

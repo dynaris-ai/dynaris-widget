@@ -49,6 +49,12 @@ const closeVoiceSession = vi.fn();
 vi.mock('./voice-api.js', () => ({
   startVoiceSession,
   closeVoiceSession,
+  isVoiceDebugEnabled: () => false,
+  resolveVoiceApiBaseUrl: (apiUrl, voiceApiUrl) => {
+    const raw = typeof voiceApiUrl === 'string' && voiceApiUrl.trim() ? voiceApiUrl : apiUrl;
+    return String(raw || '').replace(/\/+$/, '');
+  },
+  voiceDprint: vi.fn(),
 }));
 
 describe('voice session manager', () => {
@@ -56,6 +62,14 @@ describe('voice session manager', () => {
     roomInstances.length = 0;
     startVoiceSession.mockReset();
     closeVoiceSession.mockReset();
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn().mockResolvedValue({
+          getTracks: () => [{ stop: vi.fn() }],
+        }),
+      },
+    });
   });
 
   afterEach(() => {
