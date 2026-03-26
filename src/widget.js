@@ -711,8 +711,27 @@ export function init(config = {}) {
     }
   });
 
+  async function showWithVoice() {
+    if (panel.style.display !== 'flex') {
+      await showPanel();
+      if (usePolling) startPolling();
+      else connectSse();
+    }
+    if (voiceManager && !voiceManager.isActive()) {
+      unlockAudio();
+      try {
+        await voiceManager.start();
+      } catch (_) {}
+    }
+  }
+
+  window.addEventListener('dynaris:open-voice', () => {
+    void showWithVoice();
+  });
+
   const controller = {
     show: showPanel,
+    showWithVoice,
     hide() {
       void onClose();
     },
