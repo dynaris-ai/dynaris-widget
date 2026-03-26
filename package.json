@@ -34,7 +34,21 @@
     "dynaris",
     "chat",
     "widget",
-    "embed"
+    "embed",
+    "ai",
+    "ai-agent",
+    "chatbot",
+    "voice-ai",
+    "livekit",
+    "webrtc",
+    "chat-widget",
+    "ai-chat",
+    "conversational-ai",
+    "customer-support",
+    "live-chat",
+    "react",
+    "nextjs",
+    "vanilla-js"
   ],
   "repository": {
     "type": "git",

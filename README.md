@@ -1,8 +1,13 @@
 # @dynaris/widget
 
-**Add an AI agent to any website. One script tag.**
+**Add an AI chat + voice agent to any website. One script tag.**
 
-A zero-dependency embeddable chat widget that connects your site to the [Dynaris](https://dynaris.ai) AI platform — the same pipeline powering WhatsApp, SMS, and every other Dynaris channel, now in a floating chat bubble on your page.
+[![npm version](https://img.shields.io/npm/v/@dynaris/widget)](https://www.npmjs.com/package/@dynaris/widget)
+[![npm downloads](https://img.shields.io/npm/dm/@dynaris/widget)](https://www.npmjs.com/package/@dynaris/widget)
+[![license](https://img.shields.io/npm/l/@dynaris/widget)](https://github.com/dynaris-ai/dynaris-widget/blob/main/LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@dynaris/widget)](https://bundlephobia.com/package/@dynaris/widget)
+
+An embeddable AI chat widget that connects your website to the [Dynaris](https://dynaris.ai) platform — the same multi-agent pipeline powering WhatsApp, SMS, and voice channels, now as a floating chat bubble on your page. Optional **in-browser voice mode** lets users speak directly to your AI agent using LiveKit WebRTC.
 
 No frameworks. No backend to write. No configuration overhead. Drop it in and your users are talking to AI in under 2 minutes.
 
@@ -10,7 +15,7 @@ No frameworks. No backend to write. No configuration overhead. Drop it in and yo
 <script
   src="https://unpkg.com/@dynaris/widget/dist/dynaris-widget.umd.cjs"
   data-dynaris-widget="true"
-  data-user-id="YOUR_USER_ID"
+  data-api-key="YOUR_API_KEY"
   data-title="Chat with Us"
   data-welcome-message="Hi! How can I help you today?"
 ></script>
@@ -18,19 +23,21 @@ No frameworks. No backend to write. No configuration overhead. Drop it in and yo
 
 That's it. Seriously.
 
-> **New to Dynaris?** Get your user ID and set up your AI agent at [dynaris.ai](https://dynaris.ai).
+> **New to Dynaris?** Get your API key and set up your AI agent at [dynaris.ai](https://dynaris.ai).
 
 ---
 
-## Why This Widget
+## Features
 
-- **Zero dependencies** — pure ES modules, 35 KB, no runtime bloat
-- **One file for script tag** — styles are inlined in the UMD build, nothing extra to load
-- **Real-time by default** — SSE streaming with automatic polling fallback
+- **Zero runtime dependencies** — pure ES modules, ~35 KB gzipped, no React/Vue required
+- **One file for script tag** — styles inlined in the UMD build, nothing extra to load
+- **In-browser voice AI** — real-time voice sessions via LiveKit WebRTC (opt-in, see [Voice Mode](#voice-mode))
+- **Real-time streaming** — SSE with automatic polling fallback; works behind any proxy
 - **File attachments** — users can paste images or attach files up to 5 MB
 - **Session persistence** — conversation history survives page reloads via `localStorage`
-- **Fully controllable** — programmatic `show()`, `hide()`, `send()`, `destroy()` API
-- **TypeScript support** — type definitions included out of the box
+- **Programmatic API** — `show()`, `hide()`, `send()`, `showWithVoice()`, `destroy()`
+- **TypeScript support** — type definitions included
+- **Framework agnostic** — works with React, Next.js, Vue, Svelte, or plain HTML
 
 ---
 
@@ -41,7 +48,7 @@ That's it. Seriously.
 <script
   src="https://unpkg.com/@dynaris/widget/dist/dynaris-widget.umd.cjs"
   data-dynaris-widget="true"
-  data-user-id="YOUR_USER_ID"
+  data-api-key="YOUR_API_KEY"
   data-api-url="https://api.dynaris.ai"
   data-title="Chat with Us"
   data-subtitle="AI assistant"
@@ -51,7 +58,7 @@ That's it. Seriously.
 ></script>
 ```
 
-**NPM:**
+**NPM / pnpm:**
 ```bash
 npm install @dynaris/widget
 # or
@@ -68,7 +75,7 @@ pnpm add @dynaris/widget
 import { init } from '@dynaris/widget';
 
 const controller = init({
-  userId: 'YOUR_USER_ID',
+  apiKey: 'YOUR_API_KEY',
   apiUrl: 'https://api.dynaris.ai',
   title: 'Chat Support',
   subtitle: 'AI assistant',
@@ -90,17 +97,18 @@ controller.destroy();
 ```jsx
 // components/ChatWidget.jsx
 import { useEffect } from 'react';
-import { init } from '@dynaris/widget';
 
 export function ChatWidget() {
   useEffect(() => {
-    const ctrl = init({
-      userId: process.env.NEXT_PUBLIC_DYNARIS_USER_ID,
-      apiUrl: process.env.NEXT_PUBLIC_DYNARIS_API_URL,
-      title: 'Chat Support',
-      welcomeMessage: 'Hi! How can I help you?',
+    let ctrl;
+    import('@dynaris/widget').then(({ init }) => {
+      ctrl = init({
+        apiKey: process.env.NEXT_PUBLIC_DYNARIS_API_KEY,
+        apiUrl: process.env.NEXT_PUBLIC_DYNARIS_API_URL,
+        title: 'Chat Support',
+        welcomeMessage: 'Hi! How can I help you?',
+      });
     });
-
     return () => ctrl?.destroy();
   }, []);
 
@@ -128,9 +136,57 @@ export default function RootLayout({ children }) {
 
 `.env.local`:
 ```env
-NEXT_PUBLIC_DYNARIS_USER_ID=your_user_id_here
+NEXT_PUBLIC_DYNARIS_API_KEY=your_api_key_here
 NEXT_PUBLIC_DYNARIS_API_URL=https://api.dynaris.ai
 ```
+
+---
+
+## Voice Mode
+
+The widget supports **in-browser voice sessions** powered by LiveKit WebRTC. Users click a microphone button in the chat header to start a real-time voice conversation with your AI agent — no phone number, no external app, no redirect.
+
+### Enable voice (script tag)
+```html
+<script
+  src="https://unpkg.com/@dynaris/widget/dist/dynaris-widget.umd.cjs"
+  data-dynaris-widget="true"
+  data-api-key="YOUR_API_KEY"
+  data-voice-enabled="true"
+  data-voice-agent-id="YOUR_VOICE_AGENT_ID"
+  data-voice-call-label="Talk to our AI"
+></script>
+```
+
+### Enable voice (JS/NPM)
+```js
+import { init } from '@dynaris/widget';
+
+const controller = init({
+  apiKey: 'YOUR_API_KEY',
+  voiceEnabled: true,
+  voiceAgentId: 'YOUR_VOICE_AGENT_ID',
+  voiceCallLabel: 'Talk to our AI',
+  voiceParticipantName: 'Website Visitor',  // optional
+});
+
+// Programmatically open and immediately start a voice session
+controller.showWithVoice();
+```
+
+### Voice configuration options
+
+| Option | Data Attribute | JS Key | Description |
+|--------|---------------|--------|-------------|
+| Enable voice | `data-voice-enabled` | `voiceEnabled` | Show the voice button in the header |
+| Voice agent ID | `data-voice-agent-id` | `voiceAgentId` | Your Dynaris voice agent configuration ID |
+| Call label | `data-voice-call-label` | `voiceCallLabel` | Header CTA text (default: `Call our voice AI`) |
+| Participant name | `data-voice-participant-name` | `voiceParticipantName` | Name shown in the LiveKit room |
+| Voice API URL | `data-voice-api-url` | `voiceApiUrl` | Override voice API base URL (defaults to `apiUrl`) |
+| Agent name | `data-voice-agent-name` | `voiceAgentName` | LiveKit worker name override |
+| Session duration | `data-voice-session-duration-minutes` | `voiceSessionDurationMinutes` | Browser voice token duration in minutes (default: 60) |
+| Phone number | `data-voice-phone-number` | `voicePhoneNumber` | Fallback `tel:` number if not using browser voice |
+| Call URL | `data-voice-call-url` | `voiceCallUrl` | Link to a `/voice` page instead of `tel:` |
 
 ---
 
@@ -140,15 +196,19 @@ All options work as `data-*` attributes (script tag) or keys in the config objec
 
 | Option | Data Attribute | JS Key | Default | Description |
 |--------|---------------|--------|---------|-------------|
-| User ID | `data-user-id` | `userId` | — | Your Dynaris user ID |
-| API Key | `data-api-key` | `apiKey` | — | Sent as `X-Api-Key` header |
+| API Key | `data-api-key` | `apiKey` | — | Sent as `X-Api-Key` header (preferred) |
+| User ID | `data-user-id` | `userId` | — | Legacy: userId when apiKey not used |
 | API URL | `data-api-url` | `apiUrl` | `https://api.dynaris.ai` | Gateway base URL |
 | Title | `data-title` | `title` | `Chat` | Agent name in the header |
 | Subtitle | `data-subtitle` | `subtitle` | `Speak directly with our AI` | Text under the title |
 | Welcome Message | `data-welcome-message` | `welcomeMessage` | — | First message shown on open. Supports `**bold**` |
 | Privacy Policy URL | `data-privacy-policy-url` | `privacyPolicyUrl` | — | Adds a privacy link in the footer |
+| Logo URL | `data-logo-url` | `logoUrl` | — | Chat bubble / launcher icon |
+| Header Logo URL | `data-header-logo-url` | `headerLogoUrl` | — | Logo in the widget header bar |
 | Position | `data-position` | `position` | `bottom-right` | `bottom-right` or `bottom-left` |
+| Viewer | `data-viewer` | `viewer` | `embed` | `embed` (floating) or `mobile-app` (full-viewport WebView) |
 | Use Polling | `data-use-polling` | `usePolling` | `false` | Force polling instead of SSE |
+| Hide Powered By | `data-hide-powered-by` | `hidePoweredBy` | `false` | Hide the Dynaris footer mark |
 
 ---
 
@@ -172,6 +232,7 @@ pnpm install
 pnpm dev       # http://localhost:5173 — live reload
 pnpm build     # produces dist/
 pnpm preview   # serve the production build
+pnpm test      # run unit tests
 ```
 
 ### Project Structure
@@ -226,7 +287,7 @@ data: {"type":"chat_new_message","data":{"message":{"id":"...","content":"Hello!
 
 ## Troubleshooting
 
-**Widget doesn't appear** — Check the browser console. Ensure `data-user-id` is set and the script loads (Network tab).
+**Widget doesn't appear** — Check the browser console. Ensure `data-api-key` is set and the script loads (Network tab).
 
 **No replies coming through** — Verify the gateway is running and `data-api-url` is correct. Try `data-use-polling="true"` — some proxies block SSE.
 
@@ -236,37 +297,34 @@ data: {"type":"chat_new_message","data":{"message":{"id":"...","content":"Hello!
 
 **Session resets on every load** — `localStorage` must be available. Some browsers block it in private/incognito mode.
 
+**Voice doesn't connect** — Ensure `voiceEnabled: true` and a valid `voiceAgentId` are set. Check that the gateway has LiveKit configured and CORS allows your origin.
+
 ---
 
 ## Release (maintainers)
 
-**Registry policy:** npm does not allow republishing the same version. Unpublishing may be blocked if the package is old or heavily downloaded—see [unpublish policy](https://docs.npmjs.com/policies/unpublish).
-
-**Resetting the public line to `1.0.0`:** If older prerelease-style tags exist (`1.0.1`, `1.0.2`, …), publishing `1.0.0` alone does **not** move `latest` (npm keeps `latest` on the highest semver). Remove the old tarballs first, then publish:
+**Registry policy:** npm does not allow republishing the same version. Unpublishing may be blocked if the package is old or heavily downloaded — see [unpublish policy](https://docs.npmjs.com/policies/unpublish).
 
 ```bash
-npm unpublish @dynaris/widget@1.0.3
-npm unpublish @dynaris/widget@1.0.2
-npm unpublish @dynaris/widget@1.0.1
 pnpm build && pnpm test && pnpm publish
 ```
 
-If unpublish is denied, use **`npm deprecate @dynaris/widget@"<2.0.0"`** and ship a new major (e.g. **`2.0.0`**) instead, or contact npm support.
+`publishConfig.access` is **`public`**. Run publish from this repo root.
 
-`publishConfig.access` is **`public`**. Use ASCII `--` in the shell, not `—`. Run publish from this repo root.
+---
 
 ## Contributing
 
 1. Fork and create a feature branch: `git checkout -b feat/my-feature`
-2. Make changes in `src/`. Keep production dependencies at zero.
+2. Make changes in `src/`. Keep production dependencies minimal.
 3. Test locally with `pnpm dev` against a running gateway — test both SSE and polling modes.
-4. Build and verify: `pnpm build`
+4. Build and verify: `pnpm build && pnpm test`
 5. Open a PR against `main`.
 
 ---
 
 ## Powered by Dynaris
 
-This widget is the frontend for the [Dynaris](https://dynaris.ai) AI platform — a multi-agent orchestration system that can automate workflows across your entire software stack. The same AI that responds in this chat can connect to your CRM, send emails, update Jira tickets, and more.
+This widget is the browser frontend for the [Dynaris](https://dynaris.ai) AI platform — a multi-agent orchestration system that automates workflows across your entire stack. The same AI that responds in this chat can connect to your CRM, send emails, update Jira tickets, handle voice calls, and more.
 
 [Get started at dynaris.ai →](https://dynaris.ai)
