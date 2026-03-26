@@ -68,6 +68,8 @@ export interface ChatWidgetConfig {
 
 export interface ChatWidgetController {
   show: () => void;
+  /** Opens the widget panel and immediately starts a voice session. */
+  showWithVoice: () => Promise<void>;
   hide: () => void;
   toggle: () => void;
   send: (text: string) => void;
