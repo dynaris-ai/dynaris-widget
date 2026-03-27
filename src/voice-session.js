@@ -35,6 +35,7 @@ export function createVoiceSessionManager({
   voiceParticipantName,
   voiceSessionDurationMinutes = 60,
   voiceAgentName,
+  voiceMetadata,
   voiceApiUrl,
   onStateChange,
   onTranscript,
@@ -148,6 +149,7 @@ export function createVoiceSessionManager({
         participantName: voiceParticipantName,
         sessionDurationMinutes: voiceSessionDurationMinutes,
         agentName: voiceAgentName,
+        metadata: voiceMetadata,
         voiceApiUrl,
       });
 

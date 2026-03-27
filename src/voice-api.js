@@ -110,6 +110,7 @@ export async function startVoiceSession(
     participantName,
     sessionDurationMinutes,
     agentName,
+    metadata,
     voiceApiUrl,
   },
 ) {
@@ -121,6 +122,7 @@ export async function startVoiceSession(
     participant_name: participantName,
     session_duration_minutes: sessionDurationMinutes,
     agent_name: agentName,
+    metadata,
   });
 }
 

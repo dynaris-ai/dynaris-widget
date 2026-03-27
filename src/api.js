@@ -10,7 +10,7 @@ async function fetchWidget(url, init) {
   }
 }
 
-export async function sendMessage(apiUrl, userId, sessionId, message, apiKey, attachments = []) {
+export async function sendMessage(apiUrl, userId, sessionId, message, apiKey, attachments = [], metadata = undefined) {
   const base = (apiUrl || DEFAULT_API_URL).replace(/\/$/, '');
   const headers = { 'Content-Type': 'application/json' };
   if (apiKey) headers['X-Api-Key'] = apiKey;
@@ -18,6 +18,9 @@ export async function sendMessage(apiUrl, userId, sessionId, message, apiKey, at
     session_id: sessionId,
     message: String(message || '').trim(),
   };
+  if (metadata && typeof metadata === 'object') {
+    body.metadata = metadata;
+  }
   if (attachments && attachments.length > 0) {
     body.attachments = attachments.filter((a) => a.data_base64 && a.mime_type).map((a) => ({
       data_base64: a.data_base64,

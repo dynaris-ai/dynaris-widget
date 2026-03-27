@@ -1,5 +1,5 @@
 import widgetStyles from './styles.css?inline';
-import { getOrCreateSessionId } from './session.js';
+import { getOrCreateScreeningFingerprint, getOrCreateSessionId } from './session.js';
 import { sendMessage as apiSendMessage, fetchMessages, createEventSource } from './api.js';
 import {
   createWidget,
@@ -62,6 +62,7 @@ export function init(config = {}) {
   }
 
   const sessionId = getOrCreateSessionId();
+  const screeningFingerprint = getOrCreateScreeningFingerprint();
   const apiUrl = config.apiUrl ?? config.api_url ?? 'https://api.dynaris.ai';
   const usePolling = config.usePolling ?? !config.useSse;
   const viewerMode = normalizeViewerMode(config.viewer);
@@ -129,6 +130,17 @@ export function init(config = {}) {
   const recentOptimisticBodies = []; // { body, at }[] — skip matching inbound from poll
   const voiceLabel = config.voiceCallLabel ?? config.voice_call_label ?? 'Talk to our voice AI';
 
+  const screeningMetadata = {
+    session_fingerprint: screeningFingerprint,
+    widget_session_id: sessionId,
+    viewer_mode: viewerMode,
+    page_url: typeof window !== 'undefined' ? window.location.href : undefined,
+    page_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+    referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
+    user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+    channel: 'dynaris_widget',
+  };
+
   let applyVoiceSessionComposerState = () => {};
 
   // Create the in-widget voice overlay (renders on top of messages when active)
@@ -155,6 +167,10 @@ export function init(config = {}) {
             config.voice_session_duration_minutes ??
             60,
           voiceAgentName: config.voiceAgentName ?? config.voice_agent_name ?? undefined,
+          voiceMetadata: {
+            ...screeningMetadata,
+            channel: 'dynaris_widget_voice',
+          },
           voiceApiUrl: config.voiceApiUrl ?? config.voice_api_url ?? undefined,
           onStateChange: ({ state, message }) => {
             applyVoiceSessionComposerState(state);
@@ -560,7 +576,7 @@ export function init(config = {}) {
         data_base64: a.data_base64,
         mime_type: a.mime_type,
         filename: a.filename,
-      })));
+      })), screeningMetadata);
     } catch (e) {
       console.error('[DynarisWidget] Send failed:', e?.message ?? e, 'status=', e?.status);
     } finally {

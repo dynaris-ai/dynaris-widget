@@ -37,6 +37,83 @@ describe('voice-api', () => {
     expect(VoiceApiError).toBeDefined();
   });
 
+  it('includes metadata in voice start payload when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ session_id: 's1', token: 't', ws_url: 'wss://x' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { startVoiceSession } = await import('./voice-api.js');
+
+    await startVoiceSession('https://api.example.com', 'k', {
+      sessionId: 's1',
+      agentId: 'a1',
+      metadata: {
+        session_fingerprint: 'fp-1',
+        channel: 'dynaris_widget_voice',
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.com/api/chat-widget/voice/start',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: 's1',
+          agent_id: 'a1',
+          participant_name: undefined,
+          session_duration_minutes: undefined,
+          agent_name: undefined,
+          metadata: {
+            session_fingerprint: 'fp-1',
+            channel: 'dynaris_widget_voice',
+          },
+        }),
+      }),
+    );
+  });
+
+  it('includes metadata in chat send payload when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { sendMessage } = await import('./api.js');
+
+    await sendMessage(
+      'https://api.example.com',
+      undefined,
+      's1',
+      'hello',
+      'k',
+      [],
+      {
+        session_fingerprint: 'fp-1',
+        channel: 'dynaris_widget',
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.com/api/chat-widget/message',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          session_id: 's1',
+          message: 'hello',
+          metadata: {
+            session_fingerprint: 'fp-1',
+            channel: 'dynaris_widget',
+          },
+        }),
+      }),
+    );
+  });
+
   it('parses non-JSON error bodies without throwing', async () => {
     vi.stubGlobal(
       'fetch',
