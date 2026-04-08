@@ -121,6 +121,27 @@ export interface ChatWidgetConfig {
     /** When true (default), also reads `?first_name=&last_name=&phone_number=&email=&description=` from the URL. */
     prefillFromQuery?: boolean;
     prefill_from_query?: boolean;
+    /** Per-field required toggles. Omitted fields default to `true`. */
+    requiredFields?: {
+      firstName?: boolean;
+      lastName?: boolean;
+      phoneNumber?: boolean;
+      email?: boolean;
+      description?: boolean;
+      first_name?: boolean;
+      last_name?: boolean;
+      phone_number?: boolean;
+    };
+    required_fields?: {
+      firstName?: boolean;
+      lastName?: boolean;
+      phoneNumber?: boolean;
+      email?: boolean;
+      description?: boolean;
+      first_name?: boolean;
+      last_name?: boolean;
+      phone_number?: boolean;
+    };
     labels?: {
       firstName?: string;
       lastName?: string;

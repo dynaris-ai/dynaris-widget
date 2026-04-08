@@ -35,6 +35,16 @@ describe('pre-chat-form', () => {
       expect(c.labels.firstName).toBe('First name');
     });
 
+    it('supports per-field required overrides', () => {
+      const c = normalizePreChatConfig({
+        enabled: true,
+        requiredFields: { phoneNumber: false },
+      });
+      expect(c.requiredFields.firstName).toBe(true);
+      expect(c.requiredFields.phoneNumber).toBe(false);
+      expect(c.requiredFields.email).toBe(true);
+    });
+
     it('merges snake_case labels and default_values', () => {
       const c = normalizePreChatConfig({
         enabled: true,
@@ -177,6 +187,43 @@ describe('pre-chat-form', () => {
         onError: () => {},
       });
       expect(panel.querySelector('#dynaris-prechat-phoneNumber')?.value).toBe('3055551212');
+    });
+
+    it('allows optional phoneNumber to submit empty', async () => {
+      const panel = document.createElement('div');
+      document.body.appendChild(panel);
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      const onSuccess = vi.fn();
+      const onError = vi.fn();
+      const cfg = normalizePreChatConfig({
+        enabled: true,
+        requiredFields: { phoneNumber: false },
+        defaultValues: {
+          firstName: 'Pat',
+          lastName: 'Lee',
+          email: 'p@ex.com',
+          description: 'Hi',
+        },
+      });
+      mountPreChatForm(panel, cfg, {
+        onSubmit,
+        onSuccess,
+        onError,
+      });
+      panel.querySelector('#dynaris-prechat-phoneNumber').value = '';
+      const form = panel.querySelector('.dynaris-widget-prechat-form');
+      form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(onSubmit).toHaveBeenCalledWith({
+        first_name: 'Pat',
+        last_name: 'Lee',
+        phone_number: undefined,
+        email: 'p@ex.com',
+        description: 'Hi',
+      });
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
     });
   });
 });

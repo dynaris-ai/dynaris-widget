@@ -11,6 +11,14 @@ const DEFAULT_LABELS = {
   description: 'Description',
 };
 
+const DEFAULT_REQUIRED_FIELDS = {
+  firstName: true,
+  lastName: true,
+  phoneNumber: true,
+  email: true,
+  description: true,
+};
+
 function pickLabelPair(obj, camelKey, snakeKey, fallback) {
   const a = obj[camelKey];
   const b = obj[snakeKey];
@@ -27,6 +35,24 @@ function normalizeLabels(raw) {
     phoneNumber: pickLabelPair(L, 'phoneNumber', 'phone_number', DEFAULT_LABELS.phoneNumber),
     email: pickLabelPair(L, 'email', 'email', DEFAULT_LABELS.email),
     description: pickLabelPair(L, 'description', 'description', DEFAULT_LABELS.description),
+  };
+}
+
+function normalizeRequiredFields(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const pick = (camelKey, snakeKey, fallback) => {
+    const a = r[camelKey];
+    const b = r[snakeKey];
+    if (typeof a === 'boolean') return a;
+    if (typeof b === 'boolean') return b;
+    return fallback;
+  };
+  return {
+    firstName: pick('firstName', 'first_name', DEFAULT_REQUIRED_FIELDS.firstName),
+    lastName: pick('lastName', 'last_name', DEFAULT_REQUIRED_FIELDS.lastName),
+    phoneNumber: pick('phoneNumber', 'phone_number', DEFAULT_REQUIRED_FIELDS.phoneNumber),
+    email: pick('email', 'email', DEFAULT_REQUIRED_FIELDS.email),
+    description: pick('description', 'description', DEFAULT_REQUIRED_FIELDS.description),
   };
 }
 
@@ -116,6 +142,9 @@ function normalizePreChatConfig(raw) {
       ? p.skipStorageKey.trim()
       : null;
   const labels = normalizeLabels(p.labels);
+  const requiredFields = normalizeRequiredFields(
+    p.requiredFields ?? p.required_fields
+  );
   const prefillFromQuery =
     p.prefillFromQuery !== false && p.prefill_from_query !== false;
   const fromConfig = normalizeDefaultValues(
@@ -123,7 +152,16 @@ function normalizePreChatConfig(raw) {
   );
   const fromUrl = prefillFromQuery ? readPreChatDefaultsFromLocation() : normalizeDefaultValues({});
   const defaultValues = mergePreChatDefaultValues(fromConfig, fromUrl);
-  return { enabled, title, submitLabel, skipStorageKey, labels, defaultValues, prefillFromQuery };
+  return {
+    enabled,
+    title,
+    submitLabel,
+    skipStorageKey,
+    labels,
+    requiredFields,
+    defaultValues,
+    prefillFromQuery,
+  };
 }
 
 export function shouldSkipPreChatFromStorage(skipStorageKey) {
@@ -169,11 +207,11 @@ export function mountPreChatForm(panel, cfg, callbacks) {
   form.noValidate = true;
 
   const fields = [
-    { key: 'firstName', name: 'first_name', type: 'text', label: cfg.labels.firstName, autocomplete: 'given-name', required: true },
-    { key: 'lastName', name: 'last_name', type: 'text', label: cfg.labels.lastName, autocomplete: 'family-name', required: true },
-    { key: 'phoneNumber', name: 'phone_number', type: 'tel', label: cfg.labels.phoneNumber, autocomplete: 'tel', required: true },
-    { key: 'email', name: 'email', type: 'email', label: cfg.labels.email, autocomplete: 'email', required: true },
-    { key: 'description', name: 'description', type: 'textarea', label: cfg.labels.description, autocomplete: 'off', required: true },
+    { key: 'firstName', name: 'first_name', type: 'text', label: cfg.labels.firstName, autocomplete: 'given-name', required: cfg.requiredFields.firstName },
+    { key: 'lastName', name: 'last_name', type: 'text', label: cfg.labels.lastName, autocomplete: 'family-name', required: cfg.requiredFields.lastName },
+    { key: 'phoneNumber', name: 'phone_number', type: 'tel', label: cfg.labels.phoneNumber, autocomplete: 'tel', required: cfg.requiredFields.phoneNumber },
+    { key: 'email', name: 'email', type: 'email', label: cfg.labels.email, autocomplete: 'email', required: cfg.requiredFields.email },
+    { key: 'description', name: 'description', type: 'textarea', label: cfg.labels.description, autocomplete: 'off', required: cfg.requiredFields.description },
   ];
 
   const inputs = {};
@@ -244,7 +282,11 @@ export function mountPreChatForm(panel, cfg, callbacks) {
     const phoneNumber = String(inputs.phoneNumber.value || '').trim();
     const email = String(inputs.email.value || '').trim();
     const description = String(inputs.description.value || '').trim();
-    if (!firstName || !lastName || !phoneNumber || !email || !description) {
+    const missingRequiredField = fields.some((field) => {
+      if (!field.required) return false;
+      return String(inputs[field.key].value || '').trim() === '';
+    });
+    if (missingRequiredField) {
       err.textContent = 'Please fill in all fields.';
       return;
     }
@@ -253,7 +295,7 @@ export function mountPreChatForm(panel, cfg, callbacks) {
       await callbacks.onSubmit({
         first_name: firstName,
         last_name: lastName,
-        phone_number: phoneNumber,
+        phone_number: phoneNumber || undefined,
         email,
         description,
       });

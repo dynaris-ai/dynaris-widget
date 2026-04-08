@@ -67,10 +67,12 @@ export async function submitWidgetContact(apiUrl, apiKey, sessionId, payload) {
     session_id: sessionId,
     first_name: payload.first_name,
     last_name: payload.last_name,
-    phone_number: payload.phone_number,
     email: payload.email,
     description: payload.description,
   };
+  if (typeof payload.phone_number === 'string' && payload.phone_number.trim() !== '') {
+    body.phone_number = payload.phone_number.trim();
+  }
   const res = await fetchWidget(url, {
     method: 'POST',
     headers,
