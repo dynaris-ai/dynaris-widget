@@ -62,9 +62,30 @@ function configFromScript(scriptEl) {
     voicePhoneNumber: d.voicePhoneNumber || undefined,
     voiceCallUrl: d.voiceCallUrl || undefined,
     voiceCallLabel: d.voiceCallLabel || undefined,
+    progressHintText: d.progressHintText || d.progress_hint_text || undefined,
+    progressHintUrl: d.progressHintUrl || d.progress_hint_url || undefined,
     position: d.position || undefined,
     usePolling,
     useSse,
+    preChatForm: (() => {
+      const en = parseBoolean(d.preChatForm);
+      if (en !== true) return undefined;
+      const labels = {
+        firstName: d.preChatLabelFirstName || undefined,
+        lastName: d.preChatLabelLastName || undefined,
+        phoneNumber: d.preChatLabelPhoneNumber || undefined,
+        email: d.preChatLabelEmail || undefined,
+        description: d.preChatLabelDescription || undefined,
+      };
+      const hasLabel = Object.values(labels).some(Boolean);
+      return {
+        enabled: true,
+        title: d.preChatFormTitle || undefined,
+        submitLabel: d.preChatFormSubmitLabel || undefined,
+        skipStorageKey: d.preChatFormSkipKey || undefined,
+        ...(hasLabel ? { labels } : {}),
+      };
+    })(),
   };
 }
 

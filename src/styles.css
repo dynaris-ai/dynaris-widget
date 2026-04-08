@@ -61,6 +61,87 @@
     dynaris-widget-breathe 1.5s ease-in-out infinite;
 }
 
+/* Text callouts above the chat launcher (embed mode) */
+.dynaris-widget-launcher-wrap {
+  position: fixed;
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.dynaris-widget-launcher-wrap .dynaris-widget-launcher-hints,
+.dynaris-widget-launcher-wrap .dynaris-widget-btn,
+.dynaris-widget-launcher-wrap .dynaris-widget-launcher-hint-bubble {
+  pointer-events: auto;
+}
+
+.dynaris-widget-launcher-wrap .dynaris-widget-btn {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  left: auto;
+}
+
+.dynaris-widget-launcher-wrap--hints-hidden .dynaris-widget-launcher-hints {
+  display: none;
+}
+
+.dynaris-widget-launcher-hints {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: min(280px, calc(100vw - 40px));
+}
+
+.dynaris-widget-launcher-hint-bubble {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.35;
+  text-align: right;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.dynaris-widget-launcher-hint-bubble:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.dynaris-widget-launcher-hint-bubble:focus-visible {
+  outline: none;
+  border-color: #64748b;
+  box-shadow:
+    0 0 0 3px rgba(100, 116, 139, 0.14),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.dynaris-widget-launcher-hint-bubble:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none;
+}
+
+.dynaris-widget-launcher-hint-bubble--accent {
+  font-weight: 600;
+  font-size: 12px;
+  color: #334155;
+}
+
 .dynaris-widget-btn svg {
   width: 28px;
   height: 28px;
@@ -136,6 +217,43 @@
 
 .dynaris-widget-panel.dynaris-widget-panel-opening {
   animation: dynaris-widget-panel-enter 0.3s ease-out forwards;
+}
+
+.dynaris-widget-typing-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dynaris-widget-progress-hint {
+  display: inline-block;
+  max-width: 100%;
+  padding: 8px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #0f172a;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dynaris-widget-progress-hint:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+button.dynaris-widget-progress-hint {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .dynaris-widget-typing-indicator {
@@ -278,7 +396,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   border: 1px solid #e2e8f0;
   padding: 12px 16px;
-  z-index: 2147483647;
+  z-index: 90;
   box-sizing: border-box;
 }
 
@@ -1643,5 +1761,127 @@
 }
 .dynaris-widget-voice-back-btn-label {
   white-space: nowrap;
+}
+
+/* Pre-chat lead form (workflows.contacts) */
+.dynaris-widget-prechat {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  margin: 0;
+  background: #fff;
+  border-radius: inherit;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dynaris-widget-prechat-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 18px 24px;
+  flex: 1;
+  min-height: 0;
+}
+
+.dynaris-widget-prechat-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.dynaris-widget-prechat-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.dynaris-widget-prechat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dynaris-widget-prechat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dynaris-widget-prechat-input,
+.dynaris-widget-prechat-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  font-family: inherit;
+  color: #0f172a;
+  background-color: #fff;
+  color-scheme: light;
+  -webkit-text-fill-color: #0f172a;
+  transition: border-color 0.15s ease;
+  appearance: auto;
+}
+
+.dynaris-widget-prechat-input:focus,
+.dynaris-widget-prechat-textarea:focus {
+  outline: none;
+  border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.15);
+}
+
+.dynaris-widget-prechat-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.dynaris-widget-prechat-error {
+  min-height: 1.25em;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.dynaris-widget-prechat-actions {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.dynaris-widget-prechat-submit {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dynaris-widget-prechat-submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.dynaris-widget-prechat-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 

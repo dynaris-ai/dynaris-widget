@@ -1,6 +1,18 @@
 import widgetStyles from './styles.css?inline';
 import { getOrCreateScreeningFingerprint, getOrCreateSessionId } from './session.js';
-import { sendMessage as apiSendMessage, fetchMessages, createEventSource } from './api.js';
+import {
+  sendMessage as apiSendMessage,
+  fetchMessages,
+  createEventSource,
+  submitWidgetContact,
+} from './api.js';
+import {
+  normalizePreChatConfig,
+  shouldSkipPreChatFromStorage,
+  markPreChatCompleteInStorage,
+  mountPreChatForm,
+  setComposerBlocked,
+} from './pre-chat-form.js';
 import {
   createWidget,
   appendMessage,
@@ -17,6 +29,35 @@ import { createVoiceSessionManager } from './voice-session.js';
 import { createVoiceOverlay } from './voice-modal.js';
 
 const POLL_INTERVAL_MS = 2500;
+
+function resolveProgressHint(config) {
+  const text =
+    config.progressHintText ??
+    config.progress_hint_text ??
+    '';
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed) return null;
+
+  const urlRaw = config.progressHintUrl ?? config.progress_hint_url ?? '';
+  const url =
+    typeof urlRaw === 'string' && urlRaw.trim() !== '' ? urlRaw.trim() : null;
+
+  const onClick =
+    typeof config.onProgressHintClick === 'function'
+      ? config.onProgressHintClick
+      : null;
+
+  return { text: trimmed, url, onClick };
+}
+
+function resolveLaunchQuestion(config, camelKey, snakeKey, fallback) {
+  const a = config[camelKey];
+  const b = config[snakeKey];
+  const raw = typeof a === 'string' ? a : typeof b === 'string' ? b : null;
+  const t = raw?.trim();
+  if (t) return t;
+  return fallback;
+}
 
 function setVoiceControlHoverText(control, text) {
   const tooltip = control.querySelector('.dynaris-widget-header-voice-tooltip');
@@ -82,6 +123,10 @@ export function init(config = {}) {
     userId,
     title: config.title ?? 'Chat with us',
     subtitle: config.subtitle ?? 'Speak directly with our AI',
+    launcherHintChat:
+      config.launcherHintChat ?? config.launcher_hint_chat ?? undefined,
+    launcherHintVoice:
+      config.launcherHintVoice ?? config.launcher_hint_voice ?? undefined,
     position: config.position ?? 'bottom-right',
     welcomeMessage: config.welcomeMessage,
     privacyPolicyUrl: config.privacyPolicyUrl,
@@ -99,8 +144,34 @@ export function init(config = {}) {
 
   if (!ui) return null;
 
+  const preChatCfg = normalizePreChatConfig(
+    config.preChatForm ?? config.pre_chat_form
+  );
+  const preChatFormActive =
+    Boolean(preChatCfg.enabled) &&
+    Boolean(apiKey) &&
+    !shouldSkipPreChatFromStorage(preChatCfg.skipStorageKey);
+  let preChatResolved = !preChatFormActive;
+  let preChatWaitPromise = null;
+
+  const progressHint = resolveProgressHint(config);
+
+  const launcherChatQuestion = resolveLaunchQuestion(
+    config,
+    'launcherHintChatQuestion',
+    'launcher_hint_chat_question',
+    "Hi — I'd like to chat. Can you help?"
+  );
+  const launcherVoiceQuestion = resolveLaunchQuestion(
+    config,
+    'launcherHintVoiceQuestion',
+    'launcher_hint_voice_question',
+    ''
+  );
+
   const {
     btn,
+    launcherWrap,
     panel,
     messagesEl,
     input,
@@ -114,6 +185,8 @@ export function init(config = {}) {
     soundItem,
     soundToggleTrack,
     voiceControl,
+    launcherHintChatBtn,
+    launcherHintVoiceBtn,
     minimizeBtn,
     welcomeMessage,
     isMobileAppViewer,
@@ -127,6 +200,7 @@ export function init(config = {}) {
   let pollTimer = null;
   let lastMessageId = null;
   let eventSource = null;
+  let pendingLauncherRoute = null;
   const recentOptimisticBodies = []; // { body, at }[] — skip matching inbound from poll
   const voiceLabel = config.voiceCallLabel ?? config.voice_call_label ?? 'Talk to our voice AI';
 
@@ -218,37 +292,206 @@ export function init(config = {}) {
         })
       : null;
 
-  if (voiceEnabled && voiceControl && !apiKey) {
-    voiceControl.setAttribute('data-state', 'disabled');
-    setVoiceControlHoverText(voiceControl, 'Voice requires apiKey authentication.');
-    voiceControl.setAttribute(
-      'aria-label',
-      `${voiceLabel}. Voice requires apiKey authentication.`
+  function applyVoiceConfigGate() {
+    if (!voiceEnabled || !voiceControl || voiceControl.tagName !== 'BUTTON') return;
+    if (!apiKey) {
+      voiceControl.setAttribute('data-state', 'disabled');
+      setVoiceControlHoverText(voiceControl, 'Voice requires apiKey authentication.');
+      voiceControl.setAttribute(
+        'aria-label',
+        `${voiceLabel}. Voice requires apiKey authentication.`
+      );
+      voiceControl.disabled = true;
+      if (launcherHintVoiceBtn) {
+        launcherHintVoiceBtn.disabled = true;
+        launcherHintVoiceBtn.setAttribute(
+          'title',
+          'Voice requires apiKey authentication.'
+        );
+      }
+      return;
+    }
+    if (!(config.voiceAgentId ?? config.voice_agent_id)) {
+      voiceControl.setAttribute('data-state', 'disabled');
+      setVoiceControlHoverText(voiceControl, 'Voice requires voiceAgentId.');
+      voiceControl.setAttribute('aria-label', `${voiceLabel}. Voice requires voiceAgentId.`);
+      voiceControl.disabled = true;
+      if (launcherHintVoiceBtn) {
+        launcherHintVoiceBtn.disabled = true;
+        launcherHintVoiceBtn.setAttribute('title', 'Voice requires voiceAgentId.');
+      }
+      return;
+    }
+    voiceControl.setAttribute('data-state', 'idle');
+    setVoiceControlHoverText(voiceControl, voiceLabel);
+    voiceControl.setAttribute('aria-label', voiceLabel);
+    voiceControl.disabled = false;
+    if (launcherHintVoiceBtn) {
+      launcherHintVoiceBtn.disabled = false;
+      launcherHintVoiceBtn.removeAttribute('title');
+    }
+  }
+
+  applyVoiceConfigGate();
+
+  if (preChatCfg.enabled && !apiKey) {
+    console.error('[DynarisWidget] preChatForm requires apiKey');
+  }
+
+  function setPreChatInteractionBlocked(blocked) {
+    setComposerBlocked(
+      {
+        input,
+        sendBtn,
+        addBtn,
+        dictationBtn,
+        fileInput,
+        voiceControl:
+          voiceControl && voiceControl.tagName === 'BUTTON' ? voiceControl : undefined,
+      },
+      blocked
     );
-    if ('disabled' in voiceControl) {
-      voiceControl.disabled = true;
+    if (voiceControl && voiceControl.tagName === 'BUTTON') {
+      if (blocked) {
+        voiceControl.disabled = true;
+      } else {
+        applyVoiceConfigGate();
+      }
     }
   }
 
-  if (voiceEnabled && voiceControl && apiKey && !(config.voiceAgentId ?? config.voice_agent_id)) {
-    voiceControl.setAttribute('data-state', 'disabled');
-    setVoiceControlHoverText(voiceControl, 'Voice requires voiceAgentId.');
-    voiceControl.setAttribute('aria-label', `${voiceLabel}. Voice requires voiceAgentId.`);
-    if ('disabled' in voiceControl) {
-      voiceControl.disabled = true;
+  if (preChatFormActive && !preChatResolved) {
+    setPreChatInteractionBlocked(true);
+  }
+
+  function ensurePreChatGate() {
+    if (preChatResolved) return Promise.resolve();
+    if (preChatWaitPromise) return preChatWaitPromise;
+    preChatWaitPromise = new Promise((resolve, reject) => {
+      try {
+        mountPreChatForm(panel, preChatCfg, {
+          onSubmit: async (payload) => {
+            await submitWidgetContact(apiUrl, apiKey, sessionId, payload);
+          },
+          onSuccess: () => {
+            preChatResolved = true;
+            markPreChatCompleteInStorage(preChatCfg.skipStorageKey);
+            setPreChatInteractionBlocked(false);
+            preChatWaitPromise = null;
+            resolve();
+          },
+          onError: (err) => {
+            console.error('[DynarisWidget] Pre-chat submit failed:', err?.message ?? err);
+          },
+        });
+      } catch (e) {
+        preChatWaitPromise = null;
+        reject(e);
+      }
+    });
+    return preChatWaitPromise;
+  }
+
+  function setLauncherHintsVisible(visible) {
+    if (launcherWrap) {
+      launcherWrap.classList.toggle(
+        'dynaris-widget-launcher-wrap--hints-hidden',
+        !visible
+      );
+    }
+    const panelBottom = visible
+      ? panel.dataset.bottomWithHints
+      : panel.dataset.bottomWithoutHints;
+    if (panelBottom) {
+      panel.style.bottom = panelBottom;
+    }
+    const nextHidden = !visible;
+    if (launcherHintChatBtn) {
+      launcherHintChatBtn.hidden = nextHidden;
+    }
+    if (launcherHintVoiceBtn) {
+      launcherHintVoiceBtn.hidden = nextHidden;
     }
   }
 
-  async function showPanel() {
+  async function startOpenChannel() {
+    if (usePolling) {
+      startPolling();
+    } else {
+      connectSse();
+    }
+  }
+
+  async function completeVoiceRoute() {
+    const seededQuestion = launcherVoiceQuestion.trim();
+    if (seededQuestion) {
+      await sendText(seededQuestion);
+    }
+    if (voiceManager) {
+      unlockAudio();
+      if (!voiceManager.isActive()) {
+        try {
+          await voiceManager.start();
+        } catch (_) {}
+      }
+      return;
+    }
+    if (voiceControl && voiceControl.tagName === 'A') {
+      voiceControl.click();
+    }
+  }
+
+  async function resumePendingLauncherRoute() {
+    const route = pendingLauncherRoute;
+    pendingLauncherRoute = null;
+    if (route === 'chat') {
+      const seededQuestion = launcherChatQuestion.trim();
+      if (seededQuestion) {
+        await sendText(seededQuestion);
+      } else {
+        input.focus();
+      }
+      return;
+    }
+    if (route === 'voice') {
+      await completeVoiceRoute();
+    }
+  }
+
+  async function routeLauncherIntent(route) {
+    pendingLauncherRoute = route;
+    if (route === 'voice') {
+      if (panel.style.display !== 'flex') {
+        await showPanel({ skipWelcome: true });
+      } else {
+        await ensurePreChatGate();
+      }
+      await resumePendingLauncherRoute();
+      return;
+    }
+    if (panel.style.display !== 'flex') {
+      await showPanel();
+      await startOpenChannel();
+    } else {
+      await ensurePreChatGate();
+    }
+    await resumePendingLauncherRoute();
+  }
+
+  async function showPanel(options = {}) {
+    const { skipWelcome = false } = options;
     unlockAudio();
     panel.style.display = 'flex';
     btn.setAttribute('aria-expanded', 'true');
+    setLauncherHintsVisible(false);
     panel.classList.add('dynaris-widget-panel-opening');
     setTimeout(() => panel.classList.remove('dynaris-widget-panel-opening'), 350);
 
-    if (welcomeMessage && !welcomeShown) {
+    await ensurePreChatGate();
+
+    if (!skipWelcome && welcomeMessage && !welcomeShown) {
       welcomeShown = true;
-      appendTypingIndicator(messagesEl);
+      appendTypingIndicator(messagesEl, progressHint);
       await new Promise((r) => setTimeout(r, 700));
       removeTypingIndicator(messagesEl);
       await appendMessageWithTypewriter(
@@ -266,16 +509,16 @@ export function init(config = {}) {
   function hidePanel() {
     panel.style.display = 'none';
     btn.setAttribute('aria-expanded', 'false');
+    setLauncherHintsVisible(true);
   }
 
-  function togglePanel() {
+  async function togglePanel() {
     const open = panel.style.display === 'flex';
     if (open) {
       void onClose();
     } else {
-      showPanel();
-      if (usePolling) startPolling();
-      else connectSse();
+      await showPanel();
+      await startOpenChannel();
     }
   }
 
@@ -557,6 +800,7 @@ export function init(config = {}) {
   }
 
   async function sendText(text) {
+    await ensurePreChatGate();
     const t = String(text || '').trim();
     if (!t && pendingAttachments.length === 0) return;
 
@@ -569,7 +813,7 @@ export function init(config = {}) {
     input.value = '';
     pendingAttachments = [];
     renderAttachmentChips();
-    appendTypingIndicator(messagesEl);
+    appendTypingIndicator(messagesEl, progressHint);
 
     try {
       await apiSendMessage(apiUrl, userId, sessionId, t || '', apiKey, toSend.map((a) => ({
@@ -655,7 +899,9 @@ export function init(config = {}) {
     }
   }
 
-  btn.addEventListener('click', () => togglePanel());
+  btn.addEventListener('click', () => {
+    void togglePanel();
+  });
 
   minimizeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -665,18 +911,38 @@ export function init(config = {}) {
     void onClose();
   });
 
+  async function onVoiceLauncherClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!voiceManager) return;
+    unlockAudio();
+    try {
+      await ensurePreChatGate();
+      if (voiceManager.isActive()) {
+        await voiceManager.stop();
+      } else {
+        await voiceManager.start();
+      }
+    } catch (_) {}
+  }
+
   if (voiceManager && voiceControl) {
-    voiceControl.addEventListener('click', async (e) => {
+    voiceControl.addEventListener('click', onVoiceLauncherClick);
+  }
+
+  if (launcherHintChatBtn) {
+    launcherHintChatBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      unlockAudio();
-      try {
-        if (voiceManager.isActive()) {
-          await voiceManager.stop();
-        } else {
-          await voiceManager.start();
-        }
-      } catch (_) {}
+      void routeLauncherIntent('chat');
+    });
+  }
+
+  if (launcherHintVoiceBtn && voiceControl) {
+    launcherHintVoiceBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      void routeLauncherIntent('voice');
     });
   }
 
@@ -719,19 +985,21 @@ export function init(config = {}) {
     }
   });
 
-  sendBtn.addEventListener('click', () => sendText(input.value));
+  sendBtn.addEventListener('click', () => {
+    void sendText(input.value);
+  });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendText(input.value);
+      void sendText(input.value);
     }
   });
 
   async function showWithVoice() {
     if (panel.style.display !== 'flex') {
-      await showPanel();
-      if (usePolling) startPolling();
-      else connectSse();
+      await showPanel({ skipWelcome: true });
+    } else {
+      await ensurePreChatGate();
     }
     if (voiceManager && !voiceManager.isActive()) {
       unlockAudio();
@@ -767,12 +1035,14 @@ export function init(config = {}) {
   };
 
   if (isMobileAppViewer) {
-    void showPanel();
-    if (usePolling) {
-      startPolling();
-    } else {
-      connectSse();
-    }
+    void (async () => {
+      await showPanel();
+      if (usePolling) {
+        startPolling();
+      } else {
+        connectSse();
+      }
+    })();
   }
 
   return controller;

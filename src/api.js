@@ -58,6 +58,46 @@ export async function fetchMessages(apiUrl, userId, sessionId, after = null, api
   return res.json();
 }
 
+export async function submitWidgetContact(apiUrl, apiKey, sessionId, payload) {
+  const base = (apiUrl || DEFAULT_API_URL).replace(/\/$/, '');
+  const headers = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['X-Api-Key'] = apiKey;
+  const url = `${base}/api/chat-widget/contact`;
+  const body = {
+    session_id: sessionId,
+    first_name: payload.first_name,
+    last_name: payload.last_name,
+    phone_number: payload.phone_number,
+    email: payload.email,
+    description: payload.description,
+  };
+  const res = await fetchWidget(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`;
+    try {
+      const j = JSON.parse(text);
+      if (j.detail !== undefined) {
+        detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+      }
+    } catch (_) {
+      if (text.trim()) detail = text.trim().slice(0, 300);
+    }
+    const err = new Error(detail);
+    err.status = res.status;
+    throw err;
+  }
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return {};
+  }
+}
+
 export async function sendTranscript(apiUrl, userId, sessionId, email, apiKey) {
   const base = (apiUrl || DEFAULT_API_URL).replace(/\/$/, '');
   const headers = { 'Content-Type': 'application/json' };

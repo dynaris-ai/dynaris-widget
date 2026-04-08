@@ -63,6 +63,15 @@ function appendPoweredByMark(footerLink, poweredByLogoUrl) {
   footerLink.appendChild(svg);
 }
 
+function trimConfigString(obj, camelKey, snakeKey) {
+  if (!obj || typeof obj !== 'object') return null;
+  const a = obj[camelKey];
+  const b = obj[snakeKey];
+  if (typeof a === 'string' && a.trim() !== '') return a.trim();
+  if (typeof b === 'string' && b.trim() !== '') return b.trim();
+  return null;
+}
+
 export function createWidget(config) {
   const {
     apiUrl = 'https://api.dynaris.ai',
@@ -94,6 +103,13 @@ export function createWidget(config) {
   );
   const voiceHeaderHref = voiceCallUrlTrimmed ?? voiceDialParsed?.telHref ?? null;
   const shouldRenderVoiceButton = Boolean(voiceEnabled);
+  const showVoiceLauncherHint = Boolean(shouldRenderVoiceButton || voiceHeaderHref);
+  const launcherHintChatText =
+    trimConfigString(config, 'launcherHintChat', 'launcher_hint_chat') ?? title;
+  const launcherHintVoiceText = showVoiceLauncherHint
+    ? trimConfigString(config, 'launcherHintVoice', 'launcher_hint_voice') ??
+      'Speak with our AI'
+    : null;
 
   const container = document.createElement('div');
   container.className = 'dynaris-widget-container';
@@ -375,7 +391,40 @@ export function createWidget(config) {
   panel.appendChild(inputWrapper);
   panel.appendChild(footer);
 
-  container.appendChild(btn);
+  let launcherWrap = null;
+  let launcherHintChatBtn = null;
+  let launcherHintVoiceBtn = null;
+
+  if (viewer !== 'mobile-app') {
+    launcherWrap = document.createElement('div');
+    launcherWrap.className = 'dynaris-widget-launcher-wrap';
+
+    const hintsCol = document.createElement('div');
+    hintsCol.className = 'dynaris-widget-launcher-hints';
+
+    launcherHintChatBtn = document.createElement('button');
+    launcherHintChatBtn.type = 'button';
+    launcherHintChatBtn.className = 'dynaris-widget-launcher-hint-bubble';
+    launcherHintChatBtn.textContent = launcherHintChatText;
+    launcherHintChatBtn.setAttribute('aria-label', launcherHintChatText);
+    hintsCol.appendChild(launcherHintChatBtn);
+
+    if (launcherHintVoiceText) {
+      launcherHintVoiceBtn = document.createElement('button');
+      launcherHintVoiceBtn.type = 'button';
+      launcherHintVoiceBtn.className =
+        'dynaris-widget-launcher-hint-bubble dynaris-widget-launcher-hint-bubble--accent';
+      launcherHintVoiceBtn.textContent = launcherHintVoiceText;
+      launcherHintVoiceBtn.setAttribute('aria-label', launcherHintVoiceText);
+      hintsCol.appendChild(launcherHintVoiceBtn);
+    }
+
+    launcherWrap.appendChild(hintsCol);
+    launcherWrap.appendChild(btn);
+    container.appendChild(launcherWrap);
+  } else {
+    container.appendChild(btn);
+  }
   container.appendChild(panel);
 
   privacyDismiss.addEventListener('click', () => {
@@ -392,17 +441,29 @@ export function createWidget(config) {
     footer.style.display = hidePoweredBy ? 'none' : '';
   } else {
     const posMap = {
-      'bottom-right': { bottom: '20px', right: '20px' },
+      'bottom-right': { bottom: '20px', right: '20px', left: 'auto' },
       'bottom-left': { bottom: '20px', left: '20px', right: 'auto' },
     };
     const pos = posMap[position] || posMap['bottom-right'];
-    Object.assign(btn.style, pos);
-    Object.assign(panel.style, { ...pos, bottom: '84px' });
+    const panelBottomWithHints = launcherHintVoiceBtn ? '172px' : '128px';
+    const panelBottomWithoutHints = '84px';
+    if (launcherWrap) {
+      panel.dataset.bottomWithHints = panelBottomWithHints;
+      panel.dataset.bottomWithoutHints = panelBottomWithoutHints;
+      Object.assign(launcherWrap.style, pos);
+      Object.assign(panel.style, { ...pos, bottom: panelBottomWithHints });
+    } else {
+      Object.assign(btn.style, pos);
+      Object.assign(panel.style, { ...pos, bottom: panelBottomWithoutHints });
+    }
   }
 
   return {
     container,
     btn,
+    launcherWrap,
+    launcherHintChatBtn,
+    launcherHintVoiceBtn,
     panel,
     messagesEl,
     input,
@@ -523,7 +584,39 @@ export function appendMessage(messagesEl, msg, direction, isAgent = false, anima
   scrollMessagesPanelToBottom(messagesEl);
 }
 
-export function appendTypingIndicator(messagesEl) {
+function createProgressHintElement(hint) {
+  if (!hint || typeof hint.text !== 'string') return null;
+  const label = hint.text.trim();
+  if (!label) return null;
+
+  const url = typeof hint.url === 'string' && hint.url.trim() !== '' ? hint.url.trim() : null;
+  const onClick = typeof hint.onClick === 'function' ? hint.onClick : null;
+
+  if (url) {
+    const a = document.createElement('a');
+    a.className = 'dynaris-widget-progress-hint';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = label;
+    a.setAttribute('aria-label', `${label} (opens in a new tab)`);
+    return a;
+  }
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'dynaris-widget-progress-hint';
+  btn.textContent = label;
+  btn.setAttribute('aria-label', label);
+  btn.addEventListener('click', () => {
+    if (onClick) onClick();
+    const detail = { type: 'dynaris-widget:progress-hint-click', source: 'dynaris-widget', text: label };
+    window.dispatchEvent(new CustomEvent('dynaris-widget:progress-hint-click', { detail }));
+  });
+  return btn;
+}
+
+export function appendTypingIndicator(messagesEl, progressHint = null) {
   const row = document.createElement('div');
   row.className = 'dynaris-widget-msg-row dynaris-widget-msg-row-inbound dynaris-widget-msg-enter';
 
@@ -531,12 +624,20 @@ export function appendTypingIndicator(messagesEl) {
   avatar.className = 'dynaris-widget-msg-avatar';
   avatar.innerHTML = ICONS.sparkle;
 
+  const stack = document.createElement('div');
+  stack.className = 'dynaris-widget-typing-stack';
+
+  const hintEl = createProgressHintElement(progressHint);
+  if (hintEl) stack.appendChild(hintEl);
+
   const typing = document.createElement('div');
   typing.className = 'dynaris-widget-typing-indicator';
   typing.innerHTML = '<span></span><span></span><span></span>';
 
+  stack.appendChild(typing);
+
   row.appendChild(avatar);
-  row.appendChild(typing);
+  row.appendChild(stack);
   row.dataset.typing = '1';
   messagesEl.appendChild(row);
   scrollMessagesPanelToBottom(messagesEl);

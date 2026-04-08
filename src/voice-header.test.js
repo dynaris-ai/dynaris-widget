@@ -25,6 +25,52 @@ describe('header voice CTA', () => {
     expect(document.querySelector('.dynaris-widget-header-voice-status')).toBeNull();
   });
 
+  it('renders launcher text bubbles for chat and voice in embed mode', () => {
+    createWidget({
+      userId: 'u1',
+      voiceEnabled: true,
+      voiceAgentId: 'agent-1',
+      title: 'Chat with us',
+      voiceCallLabel: 'Talk to our voice AI',
+    });
+
+    const wrap = document.querySelector('.dynaris-widget-launcher-wrap');
+    expect(wrap).toBeTruthy();
+    const bubbles = wrap?.querySelectorAll('.dynaris-widget-launcher-hint-bubble');
+    expect(bubbles?.length).toBe(2);
+    expect(bubbles?.[0].textContent).toBe('Chat with us');
+    expect(bubbles?.[1].textContent).toBe('Speak with our AI');
+    expect(wrap?.querySelectorAll('.dynaris-widget-btn').length).toBe(1);
+  });
+
+  it('does not render launcher hints in mobile-app viewer', () => {
+    createWidget({
+      userId: 'u1',
+      viewer: 'mobile-app',
+      voiceEnabled: true,
+      voiceAgentId: 'agent-1',
+    });
+    expect(document.querySelector('.dynaris-widget-launcher-wrap')).toBeNull();
+  });
+
+  it('shows a voice hint bubble when header voice is a tel link', () => {
+    createWidget({
+      userId: 'u1',
+      voicePhoneNumber: '7867553623',
+      title: 'Chat with us',
+    });
+    const wrap = document.querySelector('.dynaris-widget-launcher-wrap');
+    const bubbles = wrap?.querySelectorAll('.dynaris-widget-launcher-hint-bubble');
+    expect(bubbles?.length).toBe(2);
+    expect(bubbles?.[1].textContent).toBe('Speak with our AI');
+  });
+
+  it('renders only the chat hint when there is no voice CTA', () => {
+    createWidget({ userId: 'u1', title: 'Chat with us' });
+    const wrap = document.querySelector('.dynaris-widget-launcher-wrap');
+    expect(wrap?.querySelectorAll('.dynaris-widget-launcher-hint-bubble').length).toBe(1);
+  });
+
   it('renders icon-only header link with tel href and hover title when voicePhoneNumber is set', () => {
     createWidget({
       userId: 'u1',

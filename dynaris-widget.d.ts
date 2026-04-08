@@ -16,6 +16,31 @@ export interface ChatWidgetConfig {
   apiUrl?: string;
   title?: string;
   subtitle?: string;
+  /**
+   * First text bubble above the floating launcher; defaults to `title` (e.g. “Chat with us”).
+   * snake_case: `launcher_hint_chat`.
+   */
+  launcherHintChat?: string;
+  launcher_hint_chat?: string;
+  /**
+   * Second bubble when any voice entry point exists (LiveKit, `tel:`, or `voiceCallUrl`).
+   * Default: “Speak with our AI”. snake_case: `launcher_hint_voice`.
+   */
+  launcherHintVoice?: string;
+  launcher_hint_voice?: string;
+  /**
+   * Outbound chat message sent when the chat launcher bubble is clicked (after the panel opens).
+   * snake_case: `launcher_hint_chat_question`.
+   */
+  launcherHintChatQuestion?: string;
+  launcher_hint_chat_question?: string;
+  /**
+   * Optional outbound message sent before the voice launcher continues into voice.
+   * When omitted, the voice bubble just opens the voice route after pre-chat.
+   * snake_case: `launcher_hint_voice_question`.
+   */
+  launcherHintVoiceQuestion?: string;
+  launcher_hint_voice_question?: string;
   welcomeMessage?: string;
   privacyPolicyUrl?: string;
   poweredByUrl?: string;
@@ -64,6 +89,49 @@ export interface ChatWidgetConfig {
   voiceCallUrl?: string;
   /** Header CTA label; default `Call our voice AI`. The phone number is not shown in the UI (only in `aria-label` when using `tel:`). */
   voiceCallLabel?: string;
+  /**
+   * Optional line shown in a bubble above the typing indicator while the assistant is working.
+   * With `progressHintUrl`, renders as a link (new tab). Otherwise a button that dispatches
+   * `dynaris-widget:progress-hint-click` and calls `onProgressHintClick` when provided.
+   */
+  progressHintText?: string;
+  progressHintUrl?: string;
+  onProgressHintClick?: () => void;
+  /**
+   * When enabled, shows a fixed lead form (first name, last name, phone, email, description)
+   * before chat or in-widget voice. Submits to `POST /api/chat-widget/contact` (maps to CRM `workflows.contacts`).
+   */
+  preChatForm?: {
+    enabled: boolean;
+    title?: string;
+    submitLabel?: string;
+    /** If set, successful submit sets localStorage so the form is not shown again in this browser. */
+    skipStorageKey?: string;
+    /**
+     * Initial field values; snake_case keys (`first_name`, etc.) are also accepted.
+     * Numbers are coerced to string. These override the same keys from the page query string when both are set.
+     */
+    defaultValues?: {
+      firstName?: string | number;
+      lastName?: string | number;
+      phoneNumber?: string | number;
+      email?: string | number;
+      description?: string | number;
+    };
+    /** When true (default), also reads `?first_name=&last_name=&phone_number=&email=&description=` from the URL. */
+    prefillFromQuery?: boolean;
+    prefill_from_query?: boolean;
+    labels?: {
+      firstName?: string;
+      lastName?: string;
+      phoneNumber?: string;
+      email?: string;
+      description?: string;
+      first_name?: string;
+      last_name?: string;
+      phone_number?: string;
+    };
+  };
 }
 
 export interface ChatWidgetController {

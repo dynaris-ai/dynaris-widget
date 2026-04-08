@@ -92,6 +92,8 @@ const ctrl = init({
   userId,
   apiUrl,
   voiceEnabled,
+  launcherHintChat: "Let's have a chat",
+  launcherHintVoice: 'Talk with us',
   voiceCallLabel: 'Talk to our voice AI',
   ...(voiceAgentId ? { voiceAgentId } : {}),
   ...(voiceParticipantName ? { voiceParticipantName } : {}),
