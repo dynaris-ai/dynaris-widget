@@ -175,6 +175,7 @@ export function init(config = {}) {
     launcherWrap,
     panel,
     messagesEl,
+    inputWrapper,
     input,
     sendBtn,
     addBtn,
@@ -340,6 +341,9 @@ export function init(config = {}) {
   }
 
   function setPreChatInteractionBlocked(blocked) {
+    if (inputWrapper) {
+      inputWrapper.hidden = blocked;
+    }
     setComposerBlocked(
       {
         input,

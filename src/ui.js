@@ -466,6 +466,7 @@ export function createWidget(config) {
     launcherHintVoiceBtn,
     panel,
     messagesEl,
+    inputWrapper,
     input,
     sendBtn,
     addBtn,

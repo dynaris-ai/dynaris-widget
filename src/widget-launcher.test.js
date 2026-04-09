@@ -146,7 +146,12 @@ describe('widget launcher routing', () => {
       'Need pricing help'
     );
 
+    const inputWrapper = document.querySelector('.dynaris-widget-input-wrapper');
+    expect(inputWrapper?.hidden).toBe(true);
+
     await submitPreChatForm();
+
+    expect(inputWrapper?.hidden).toBe(false);
 
     expect(submitWidgetContactMock).toHaveBeenCalledTimes(1);
     expect(sendMessageMock).toHaveBeenCalledTimes(1);
