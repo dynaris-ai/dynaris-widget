@@ -1,5 +1,6 @@
 /**
  * Pre-chat lead form (first name, last name, phone, email, description).
+ * By default first name, last name, and email are required; phone and description are optional.
  * Shown as a full-panel overlay until submitted; maps to gateway POST /api/chat-widget/contact.
  */
 
@@ -14,9 +15,9 @@ const DEFAULT_LABELS = {
 const DEFAULT_REQUIRED_FIELDS = {
   firstName: true,
   lastName: true,
-  phoneNumber: true,
+  phoneNumber: false,
   email: true,
-  description: true,
+  description: false,
 };
 
 function pickLabelPair(obj, camelKey, snakeKey, fallback) {

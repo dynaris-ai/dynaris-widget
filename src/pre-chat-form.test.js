@@ -35,13 +35,23 @@ describe('pre-chat-form', () => {
       expect(c.labels.firstName).toBe('First name');
     });
 
+    it('defaults first name, last name, and email required; phone and description optional', () => {
+      const c = normalizePreChatConfig({ enabled: true });
+      expect(c.requiredFields.firstName).toBe(true);
+      expect(c.requiredFields.lastName).toBe(true);
+      expect(c.requiredFields.email).toBe(true);
+      expect(c.requiredFields.phoneNumber).toBe(false);
+      expect(c.requiredFields.description).toBe(false);
+    });
+
     it('supports per-field required overrides', () => {
       const c = normalizePreChatConfig({
         enabled: true,
-        requiredFields: { phoneNumber: false },
+        requiredFields: { phoneNumber: true, description: true },
       });
       expect(c.requiredFields.firstName).toBe(true);
-      expect(c.requiredFields.phoneNumber).toBe(false);
+      expect(c.requiredFields.phoneNumber).toBe(true);
+      expect(c.requiredFields.description).toBe(true);
       expect(c.requiredFields.email).toBe(true);
     });
 
@@ -197,7 +207,6 @@ describe('pre-chat-form', () => {
       const onError = vi.fn();
       const cfg = normalizePreChatConfig({
         enabled: true,
-        requiredFields: { phoneNumber: false },
         defaultValues: {
           firstName: 'Pat',
           lastName: 'Lee',
@@ -224,6 +233,36 @@ describe('pre-chat-form', () => {
       });
       expect(onSuccess).toHaveBeenCalledTimes(1);
       expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('allows optional description to submit empty with defaults', async () => {
+      const panel = document.createElement('div');
+      document.body.appendChild(panel);
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      const cfg = normalizePreChatConfig({
+        enabled: true,
+        defaultValues: {
+          firstName: 'Pat',
+          lastName: 'Lee',
+          email: 'p@ex.com',
+        },
+      });
+      mountPreChatForm(panel, cfg, {
+        onSubmit,
+        onSuccess: () => {},
+        onError: () => {},
+      });
+      const form = panel.querySelector('.dynaris-widget-prechat-form');
+      form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(onSubmit).toHaveBeenCalledWith({
+        first_name: 'Pat',
+        last_name: 'Lee',
+        phone_number: undefined,
+        email: 'p@ex.com',
+        description: '',
+      });
     });
   });
 });

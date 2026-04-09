@@ -100,6 +100,7 @@ export interface ChatWidgetConfig {
   /**
    * When enabled, shows a fixed lead form (first name, last name, phone, email, description)
    * before chat or in-widget voice. Submits to `POST /api/chat-widget/contact` (maps to CRM `workflows.contacts`).
+   * By default, first name, last name, and email are required; phone and description are optional.
    */
   preChatForm?: {
     enabled: boolean;
@@ -121,7 +122,10 @@ export interface ChatWidgetConfig {
     /** When true (default), also reads `?first_name=&last_name=&phone_number=&email=&description=` from the URL. */
     prefillFromQuery?: boolean;
     prefill_from_query?: boolean;
-    /** Per-field required toggles. Omitted fields default to `true`. */
+    /**
+     * Per-field required toggles. Omitted keys use widget defaults: firstName, lastName, and email
+     * default to required; phoneNumber and description default to optional.
+     */
     requiredFields?: {
       firstName?: boolean;
       lastName?: boolean;

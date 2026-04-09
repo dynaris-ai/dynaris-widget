@@ -170,6 +170,7 @@ export function init(config = {}) {
   );
 
   const {
+    container,
     btn,
     launcherWrap,
     panel,
@@ -459,6 +460,7 @@ export function init(config = {}) {
   }
 
   async function routeLauncherIntent(route) {
+    setLauncherHintsVisible(false);
     pendingLauncherRoute = route;
     if (route === 'voice') {
       if (panel.style.display !== 'flex') {
@@ -483,6 +485,7 @@ export function init(config = {}) {
     unlockAudio();
     panel.style.display = 'flex';
     btn.setAttribute('aria-expanded', 'true');
+    container.classList.add('dynaris-widget-has-open-panel');
     setLauncherHintsVisible(false);
     panel.classList.add('dynaris-widget-panel-opening');
     setTimeout(() => panel.classList.remove('dynaris-widget-panel-opening'), 350);
@@ -509,6 +512,7 @@ export function init(config = {}) {
   function hidePanel() {
     panel.style.display = 'none';
     btn.setAttribute('aria-expanded', 'false');
+    container.classList.remove('dynaris-widget-has-open-panel');
     setLauncherHintsVisible(true);
   }
 
@@ -900,7 +904,14 @@ export function init(config = {}) {
   }
 
   btn.addEventListener('click', () => {
+    if (panel.style.display !== 'flex') {
+      setLauncherHintsVisible(false);
+    }
     void togglePanel();
+  });
+
+  panel.addEventListener('pointerdown', () => {
+    setLauncherHintsVisible(false);
   });
 
   minimizeBtn.addEventListener('click', (e) => {
@@ -1022,6 +1033,7 @@ export function init(config = {}) {
     toggle: togglePanel,
     send: sendText,
     destroy() {
+      container.classList.remove('dynaris-widget-has-open-panel');
       stopPolling();
       disconnectSse();
       stopDictation();

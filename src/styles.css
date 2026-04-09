@@ -215,6 +215,15 @@
   overflow: visible;
 }
 
+/* Launcher wrap was above the panel (higher z-index), so hint bubbles could sit on top of the chat UI. When open, stack the panel above and tuck the FAB so clicks hit the panel. */
+.dynaris-widget-has-open-panel .dynaris-widget-launcher-wrap {
+  z-index: 2147483644;
+}
+
+.dynaris-widget-has-open-panel .dynaris-widget-panel {
+  z-index: 2147483647;
+}
+
 .dynaris-widget-panel.dynaris-widget-panel-opening {
   animation: dynaris-widget-panel-enter 0.3s ease-out forwards;
 }
