@@ -1,6 +1,6 @@
 {
   "name": "@dynaris/widget",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Embeddable chat widget that connects to the Dynaris chat pipeline (web_widget channel)",
   "type": "module",
   "main": "dist/dynaris-widget.umd.cjs",
