@@ -29,6 +29,24 @@ describe('tokenizeInlineText', () => {
     ]);
   });
 
+  it('tokenizes markdown links with labels', () => {
+    expect(
+      tokenizeInlineText(
+        'Read [Docs](https://docs.dynaris.ai) and **[Pricing](https://dynaris.ai/pricing)**'
+      )
+    ).toEqual([
+      { type: 'text', value: 'Read ', bold: false },
+      { type: 'link', value: 'Docs', href: 'https://docs.dynaris.ai', bold: false },
+      { type: 'text', value: ' and ', bold: false },
+      {
+        type: 'link',
+        value: 'Pricing',
+        href: 'https://dynaris.ai/pricing',
+        bold: true,
+      },
+    ]);
+  });
+
   it('leaves plain text untouched when there are no links', () => {
     expect(tokenizeInlineText('Hello **team**')).toEqual([
       { type: 'text', value: 'Hello ', bold: false },

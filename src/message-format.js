@@ -31,29 +31,99 @@ function pushTextToken(tokens, value, bold = false) {
   tokens.push({ type: 'text', value, bold });
 }
 
+function matchMarkdownLink(text, startIndex) {
+  if (text[startIndex] !== '[') return null;
+
+  const labelEnd = text.indexOf('](', startIndex);
+  if (labelEnd === -1) return null;
+
+  const label = text.slice(startIndex + 1, labelEnd);
+  if (!label) return null;
+
+  const hrefStart = labelEnd + 2;
+  let depth = 0;
+  for (let index = hrefStart; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '(') {
+      depth += 1;
+      continue;
+    }
+    if (char !== ')') continue;
+    if (depth > 0) {
+      depth -= 1;
+      continue;
+    }
+
+    const href = text.slice(hrefStart, index).trim();
+    if (!/^https?:\/\//.test(href)) return null;
+    return {
+      start: startIndex,
+      end: index + 1,
+      value: label,
+      href,
+    };
+  }
+  return null;
+}
+
+function findNextMarkdownLink(text, fromIndex) {
+  let index = text.indexOf('[', fromIndex);
+  while (index !== -1) {
+    const link = matchMarkdownLink(text, index);
+    if (link) return link;
+    index = text.indexOf('[', index + 1);
+  }
+  return null;
+}
+
+function findNextRawUrl(text, fromIndex) {
+  URL_PATTERN.lastIndex = fromIndex;
+  const match = URL_PATTERN.exec(text);
+  URL_PATTERN.lastIndex = 0;
+  if (!match) return null;
+  const rawUrl = match[0];
+  const { url, trailing } = splitTrailingUrlPunctuation(rawUrl);
+  return {
+    start: match.index,
+    end: match.index + rawUrl.length,
+    value: url,
+    href: url,
+    trailing,
+  };
+}
+
 function pushLinkTokens(tokens, value, bold = false) {
   const text = String(value || '');
-  let lastIndex = 0;
-  let match = URL_PATTERN.exec(text);
+  let cursor = 0;
 
-  while (match) {
-    const rawUrl = match[0];
-    const start = match.index;
-    const end = start + rawUrl.length;
-    const { url, trailing } = splitTrailingUrlPunctuation(rawUrl);
+  while (cursor < text.length) {
+    const nextMarkdown = findNextMarkdownLink(text, cursor);
+    const nextRawUrl = findNextRawUrl(text, cursor);
+    const nextToken =
+      nextMarkdown && (!nextRawUrl || nextMarkdown.start <= nextRawUrl.start)
+        ? { kind: 'markdown', ...nextMarkdown }
+        : nextRawUrl
+          ? { kind: 'rawUrl', ...nextRawUrl }
+          : null;
 
-    pushTextToken(tokens, text.slice(lastIndex, start), bold);
-    if (url) {
-      tokens.push({ type: 'link', value: url, href: url, bold });
+    if (!nextToken) break;
+
+    pushTextToken(tokens, text.slice(cursor, nextToken.start), bold);
+    if (nextToken.value) {
+      tokens.push({
+        type: 'link',
+        value: nextToken.value,
+        href: nextToken.href,
+        bold,
+      });
     }
-    pushTextToken(tokens, trailing, bold);
-
-    lastIndex = end;
-    match = URL_PATTERN.exec(text);
+    if (nextToken.kind === 'rawUrl') {
+      pushTextToken(tokens, nextToken.trailing, bold);
+    }
+    cursor = nextToken.end;
   }
 
-  pushTextToken(tokens, text.slice(lastIndex), bold);
-  URL_PATTERN.lastIndex = 0;
+  pushTextToken(tokens, text.slice(cursor), bold);
 }
 
 export function tokenizeInlineText(value) {

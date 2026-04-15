@@ -644,6 +644,7 @@ button.dynaris-widget-progress-hint {
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .dynaris-widget-header-voice-status {

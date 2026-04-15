@@ -63,15 +63,13 @@ export async function submitWidgetContact(apiUrl, apiKey, sessionId, payload) {
   const headers = { 'Content-Type': 'application/json' };
   if (apiKey) headers['X-Api-Key'] = apiKey;
   const url = `${base}/api/chat-widget/contact`;
-  const body = {
-    session_id: sessionId,
-    first_name: payload.first_name,
-    last_name: payload.last_name,
-    email: payload.email,
-    description: payload.description,
-  };
-  if (typeof payload.phone_number === 'string' && payload.phone_number.trim() !== '') {
-    body.phone_number = payload.phone_number.trim();
+  const body = { session_id: sessionId };
+  const optionalFields = ['first_name', 'last_name', 'phone_number', 'email', 'description'];
+  for (const field of optionalFields) {
+    const value = payload[field];
+    if (typeof value === 'string' && value.trim() !== '') {
+      body[field] = value.trim();
+    }
   }
   const res = await fetchWidget(url, {
     method: 'POST',

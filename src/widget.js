@@ -30,6 +30,15 @@ import { createVoiceOverlay } from './voice-modal.js';
 
 const POLL_INTERVAL_MS = 2500;
 
+function hasAnyPreChatValue(payload) {
+  if (!payload || typeof payload !== 'object') return false;
+  const fields = ['first_name', 'last_name', 'phone_number', 'email', 'description'];
+  return fields.some((field) => {
+    const value = payload[field];
+    return typeof value === 'string' && value.trim() !== '';
+  });
+}
+
 function resolveProgressHint(config) {
   const text =
     config.progressHintText ??
@@ -376,6 +385,7 @@ export function init(config = {}) {
       try {
         mountPreChatForm(panel, preChatCfg, {
           onSubmit: async (payload) => {
+            if (!hasAnyPreChatValue(payload)) return;
             await submitWidgetContact(apiUrl, apiKey, sessionId, payload);
           },
           onSuccess: () => {

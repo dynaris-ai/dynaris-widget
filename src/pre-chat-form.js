@@ -1,6 +1,6 @@
 /**
  * Pre-chat lead form (first name, last name, phone, email, description).
- * By default first name, last name, and email are required; phone and description are optional.
+ * Fields are optional by default and only become required when configured.
  * Shown as a full-panel overlay until submitted; maps to gateway POST /api/chat-widget/contact.
  */
 
@@ -13,11 +13,19 @@ const DEFAULT_LABELS = {
 };
 
 const DEFAULT_REQUIRED_FIELDS = {
+  firstName: false,
+  lastName: false,
+  phoneNumber: false,
+  email: false,
+  description: false,
+};
+
+const DEFAULT_VISIBLE_FIELDS = {
   firstName: true,
   lastName: true,
-  phoneNumber: false,
+  phoneNumber: true,
   email: true,
-  description: false,
+  description: true,
 };
 
 function pickLabelPair(obj, camelKey, snakeKey, fallback) {
@@ -54,6 +62,24 @@ function normalizeRequiredFields(raw) {
     phoneNumber: pick('phoneNumber', 'phone_number', DEFAULT_REQUIRED_FIELDS.phoneNumber),
     email: pick('email', 'email', DEFAULT_REQUIRED_FIELDS.email),
     description: pick('description', 'description', DEFAULT_REQUIRED_FIELDS.description),
+  };
+}
+
+function normalizeVisibleFields(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const pick = (camelKey, snakeKey, fallback) => {
+    const a = r[camelKey];
+    const b = r[snakeKey];
+    if (typeof a === 'boolean') return a;
+    if (typeof b === 'boolean') return b;
+    return fallback;
+  };
+  return {
+    firstName: pick('firstName', 'first_name', DEFAULT_VISIBLE_FIELDS.firstName),
+    lastName: pick('lastName', 'last_name', DEFAULT_VISIBLE_FIELDS.lastName),
+    phoneNumber: pick('phoneNumber', 'phone_number', DEFAULT_VISIBLE_FIELDS.phoneNumber),
+    email: pick('email', 'email', DEFAULT_VISIBLE_FIELDS.email),
+    description: pick('description', 'description', DEFAULT_VISIBLE_FIELDS.description),
   };
 }
 
@@ -143,6 +169,9 @@ function normalizePreChatConfig(raw) {
       ? p.skipStorageKey.trim()
       : null;
   const labels = normalizeLabels(p.labels);
+  const visibleFields = normalizeVisibleFields(
+    p.visibleFields ?? p.visible_fields
+  );
   const requiredFields = normalizeRequiredFields(
     p.requiredFields ?? p.required_fields
   );
@@ -159,6 +188,7 @@ function normalizePreChatConfig(raw) {
     submitLabel,
     skipStorageKey,
     labels,
+    visibleFields,
     requiredFields,
     defaultValues,
     prefillFromQuery,
@@ -182,6 +212,11 @@ export function markPreChatCompleteInStorage(skipStorageKey) {
 }
 
 export { normalizePreChatConfig };
+
+function toOptionalPayloadValue(value) {
+  const trimmed = String(value || '').trim();
+  return trimmed === '' ? undefined : trimmed;
+}
 
 /**
  * @param {HTMLElement} panel
@@ -213,7 +248,7 @@ export function mountPreChatForm(panel, cfg, callbacks) {
     { key: 'phoneNumber', name: 'phone_number', type: 'tel', label: cfg.labels.phoneNumber, autocomplete: 'tel', required: cfg.requiredFields.phoneNumber },
     { key: 'email', name: 'email', type: 'email', label: cfg.labels.email, autocomplete: 'email', required: cfg.requiredFields.email },
     { key: 'description', name: 'description', type: 'textarea', label: cfg.labels.description, autocomplete: 'off', required: cfg.requiredFields.description },
-  ];
+  ].filter((field) => cfg.visibleFields[field.key] !== false);
 
   const inputs = {};
 
@@ -275,20 +310,24 @@ export function mountPreChatForm(panel, cfg, callbacks) {
     });
   }
 
+  function getInputValue(key) {
+    return toOptionalPayloadValue(inputs[key]?.value);
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     err.textContent = '';
-    const firstName = String(inputs.firstName.value || '').trim();
-    const lastName = String(inputs.lastName.value || '').trim();
-    const phoneNumber = String(inputs.phoneNumber.value || '').trim();
-    const email = String(inputs.email.value || '').trim();
-    const description = String(inputs.description.value || '').trim();
+    const firstName = getInputValue('firstName');
+    const lastName = getInputValue('lastName');
+    const phoneNumber = getInputValue('phoneNumber');
+    const email = getInputValue('email');
+    const description = getInputValue('description');
     const missingRequiredField = fields.some((field) => {
       if (!field.required) return false;
       return String(inputs[field.key].value || '').trim() === '';
     });
     if (missingRequiredField) {
-      err.textContent = 'Please fill in all fields.';
+      err.textContent = 'Please fill in all required fields.';
       return;
     }
     setBusy(true);
@@ -296,7 +335,7 @@ export function mountPreChatForm(panel, cfg, callbacks) {
       await callbacks.onSubmit({
         first_name: firstName,
         last_name: lastName,
-        phone_number: phoneNumber || undefined,
+        phone_number: phoneNumber,
         email,
         description,
       });
@@ -315,7 +354,10 @@ export function mountPreChatForm(panel, cfg, callbacks) {
   });
 
   requestAnimationFrame(() => {
-    inputs.firstName.focus();
+    const firstInput = Object.values(inputs)[0];
+    if (firstInput && typeof firstInput.focus === 'function') {
+      firstInput.focus();
+    }
   });
 
   return {

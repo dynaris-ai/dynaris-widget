@@ -242,4 +242,27 @@ describe('widget launcher routing', () => {
       headerVoiceClick.mock.invocationCallOrder[0]
     );
   });
+
+  it('skips contact submission when the pre-chat form is left blank', async () => {
+    const ctrl = init({
+      apiKey: 'api-key',
+      usePolling: false,
+      title: 'Chat with us',
+      preChatForm: {
+        enabled: true,
+      },
+    });
+
+    const [chatBtn] = document.querySelectorAll('.dynaris-widget-launcher-hint-bubble');
+    chatBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await flushPromises();
+
+    await submitPreChatForm();
+
+    expect(submitWidgetContactMock).not.toHaveBeenCalled();
+    expect(sendMessageMock).toHaveBeenCalledTimes(1);
+    expect(sendMessageMock.mock.calls[0][3]).toContain("I'd like to chat");
+
+    ctrl?.hide();
+  });
 });
