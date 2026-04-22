@@ -541,22 +541,27 @@ export function init(config = {}) {
   }
 
   function addOutboundMessage(text, attachments = []) {
-    if (text) {
-      appendMessage(messagesEl, {
-        content: { body: text },
-        messageType: 'text',
-        direction: 'outbound',
-        createdAt: new Date().toISOString(),
-      }, 'outbound');
+    if (attachments.length === 0) {
+      if (text) {
+        appendMessage(messagesEl, {
+          content: { body: text },
+          messageType: 'text',
+          direction: 'outbound',
+          createdAt: new Date().toISOString(),
+        }, 'outbound');
+      }
+      return;
     }
-    for (const att of attachments) {
+
+    for (let index = 0; index < attachments.length; index += 1) {
+      const att = attachments[index];
       const kind = (att.mime_type || '').startsWith('image/') ? 'image' : 'document';
       appendMessage(messagesEl, {
         content: {
           url: att.data_url,
           mimeType: att.mime_type,
           filename: att.filename,
-          caption: '',
+          caption: index === 0 ? (text || '') : '',
         },
         messageType: kind,
         direction: 'outbound',
