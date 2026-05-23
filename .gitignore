@@ -1,8 +1,5 @@
 node_modules
 dist
-.env
-.env.local
-.env.*
 !.env.example
 playground/.env
 playground/.env.local
@@ -15,3 +12,4 @@ coverage/
 
 # Local-only maintainer docs (not committed)
 LOCAL-NPM-PUBLISH.md
+config.bat
