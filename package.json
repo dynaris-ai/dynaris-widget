@@ -20,7 +20,7 @@
   "scripts": {
     "build": "vite build",
     "dispatch:consumers": "node scripts/notify-consumers.js",
-    "dev": "vite",
+    "dev": "node api.js && vite",
     "postpublish": "pnpm dispatch:consumers",
     "preview": "vite preview",
     "test": "vitest run"
